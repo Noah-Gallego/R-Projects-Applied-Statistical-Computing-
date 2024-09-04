@@ -20,7 +20,7 @@ odd_even_calc = function(choice, start, end) {
 
   return(sum)
 }
-
+ 
 odd_even_calc("odd", 1, 50)
 odd_even_calc("even", 1, 50)
 
