@@ -1,0 +1,300 @@
+---
+title: "Graphical and Numerical summaries"
+author: "Noah Gallego"
+date: "2024-09-11"
+output: pdf_document
+---
+# Read Data
+data = read.csv("BBgradrates.csv")
+head(data)
+
+install.packages("tidyverse")
+library(readxl)
+data_excel = read_xlsx("BBgradrates.xlsx")
+
+head(data_excel)
+# Dotplot example using R
+
+
+## Installing necessary R packages
+
+
+## Loading the installed package to your R session
+
+This is the process of loading and attaching packages or libraries to your R session.
+
+
+```{r, echo=FALSE}
+require(mosaic)
+```
+
+# Sactterplot 
+
+## Import the data set to R
+
+Import the dataset into R
+```{r, echo=TRUE}
+data("trees")
+```
+
+## Checking the dataset overview
+```{r, echo=TRUE}
+help(trees) #Gives a detailed description of the data set "Trees". Look at the window in your right hand bottom corner
+glimpse(trees)
+```
+
+## Plotting the scatter plot
+
+```{r , echo=FALSE}
+help("xyplot")
+xyplot( Volume ~ Height, data = trees, main = "Scatterplot of Height vs Volume", xlab = "Height", ylab = "Volume" )
+
+```
+
+
+# Dot plot
+
+## Import the data set to R
+
+Import the dataset into R
+```{r, echo=TRUE}
+gradrate = read.csv("BBgradrates.csv")
+```
+
+## Checking the dataset overview
+```{r, echo=TRUE}
+glimpse(gradrate)
+```
+
+## Plotting the dot plot
+
+```{r , echo=FALSE}
+gf_dotplot( ~ Graduation_rates , data = gradrate)
+```
+
+
+## Comparative Dotplots
+
+R syntax:  gf_dotplot( ~ x | gfactor , data).
+
+
+```{r, echo=TRUE}
+SeatBelt_data = read.csv("SeatBeltStudy.csv")
+glimpse(SeatBelt_data)
+gf_dotplot( ~ Perc_wearing | Law , data=SeatBelt_data)
+```
+
+# Calculating mean using r
+
+Import the dataset into R
+```{r, echo=TRUE}
+movies_revenue = read.csv("movies_revenue.csv")
+```
+
+
+
+## mean
+
+```{r, echo=TRUE}
+mean( ~ revenue, data= movies_revenue )
+```
+
+
+# Calculating median using r
+
+```{r, echo=TRUE}
+median( ~ revenue, data= movies_revenue )
+```
+
+
+# Calculating quantiles
+
+## Quantile 1
+```{r, echo=TRUE}
+ quantile(movies_revenue$revenue, 0.25)
+```
+
+
+## Quantile 2
+```{r, echo=TRUE}
+ quantile(movies_revenue$revenue, 0.50)
+```
+
+## Histogram 
+```{r, echo=TRUE}
+options(scipen=999)
+histogram( ~ revenue, data= movies_revenue )
+```
+
+
+# Histogram for The HELP study
+
+Import the dataset to R
+
+```{r, echo=TRUE}
+HstudyData = read.csv("HELPstudy.csv")
+```
+
+Glimpse of the data set
+
+```{r, echo=TRUE}
+
+glimpse( HstudyData )
+
+
+```
+Histogram for age
+
+
+```{r, echo=TRUE}
+histogram( ~ age , data= HstudyData )
+```
+
+Comparative histogram to examine the distribution of age by the type of housing (homeless or housed). The housing type observations are in the housing variable.
+
+
+```{r, echo=TRUE}
+histogram( ~ age | housing , data= HstudyData )
+```
+
+# Measures of dispersion and Boxplot
+
+## Import cholestrol datset
+
+```{r, echo=TRUE}
+choldata  = read.csv("chol.csv")
+```
+
+## Glimpse of dataset
+
+```{r, echo=TRUE}
+glimpse(choldata)
+```
+
+
+## Variance of cholestrol
+
+variance: var( ~ chol , data = choldata)
+
+```{r, echo=TRUE}
+var( ~ chol , data = choldata)
+```
+
+### Variance by group
+```{r, echo=TRUE}
+var( ~ chol|group , data = choldata)
+```
+
+## Standard deviation
+```{r, echo=TRUE}
+sd ( ~ chol , data = choldata)
+```
+
+### Standard deviation by group
+```{r, echo=TRUE}
+sd ( ~ chol | group , data = choldata)
+```
+
+
+## Median cholestrol level
+```{r, echo=TRUE}
+median( ~ chol , data = choldata)
+```
+
+
+## Median cholestrol level by group
+```{r, echo=TRUE}
+median( ~ chol | group , data = choldata)
+```
+
+###  IQR of colestrol level
+```{r, echo=TRUE}
+iqr( ~ chol , data = choldata)
+```
+
+## Five number summary
+```{r, echo=TRUE}
+fivenum( ~ chol , data = choldata)
+```
+
+### Five number summary by group
+```{r, echo=TRUE}
+fivenum( ~ chol , data = choldata)
+```
+
+## Box plot
+```{r, echo=TRUE}
+gf_boxplot( ~ chol , data = choldata)
+```
+
+
+###  Box plot by group
+```{r, echo=TRUE}
+gf_boxplot( ~ chol | group , data = choldata)
+```
+
+# Robust statistics
+
+Following are some MATH 2200 marks entered to canvas by your instructor
+```{r, echo=TRUE}
+robust_data = c(88,87,86,91,79,89,7,85,900,90,92,96,85,6,850)
+```
+
+Calculate mean, median, range, IQR, standard deviation, variance
+
+```{r, echo=TRUE}
+mean(robust_data)
+median(robust_data)
+range(robust_data)
+iqr(robust_data)
+sd(robust_data)
+var(robust_data)
+```
+
+## Draw a boxplot for the above data
+
+```{r, echo=TRUE}
+boxplot(robust_data)
+```
+
+## Remove the outliers
+
+Lower outliers
+```{r, echo=TRUE}
+Q1 =  quantile(robust_data,0.25)
+IQR = iqr(robust_data)
+lower_out = Q1 - 1.5*IQR 
+lower_out
+```
+
+Upper outliers
+```{r, echo=TRUE}
+Q3 =  quantile(robust_data,0.75)
+IQR = iqr(robust_data)
+upper_out = Q3 + 1.5*IQR 
+upper_out
+```
+
+## Now remove the outliers
+
+```{r, echo=TRUE}
+robust_data_withoutoutliers = c(88,87,86,91,79,89,85,90,92,96,85)
+```
+
+Calculate mean, median, range, IQR, standard deviation, variance
+
+```{r, echo=TRUE}
+mean(robust_data_withoutoutliers)
+median(robust_data_withoutoutliers)
+range(robust_data_withoutoutliers)
+iqr(robust_data_withoutoutliers)
+sd(robust_data_withoutoutliers)
+var(robust_data_withoutoutliers)
+```
+
+
+## Draw a boxplot for the above data
+
+```{r, echo=TRUE}
+boxplot(robust_data_withoutoutliers)
+```

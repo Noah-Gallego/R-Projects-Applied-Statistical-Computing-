@@ -1,0 +1,178 @@
+---
+title: 'Lab 4: RMarkdown and RStudio Overview'
+author: "Noah Gallego"
+date: "09 September 2024"
+output:
+  html_document:
+    toc: false
+    df_print: paged
+  word_document:
+    toc: false
+  pdf_document:
+    toc: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Packages
+```{r}
+library(plotrix)
+library(readxl)
+library(VennDiagram)
+library(dplyr)
+library(tidyr)
+
+```
+
+## Question 1: Load the Excel file
+```{r}
+# Read-In Excel File
+df = read_xlsx("survey.xlsx")
+```
+
+## Question 2: Convert all text in the data frame to lowercase
+```{r}
+# Convert All Text in df to lowercase
+for (i in colnames(df)) {
+  df[[i]] = tolower(df[[i]])
+}
+```
+
+## Question 3: Split the expectation column into two new columns
+```{r}
+# Split expectation column into two separate columns
+df = separate(df, expectation, into = c("expectation_1", "expectation_2"), sep = ",")
+
+# Remove blank spaces
+df$expectation_2 = trimws(df$expectation_2)
+```
+
+## Question 4: Replace "na" in expectation_1 with NA values
+```{r}
+# Replace "na" with NA
+df = mutate(df, mutate(across(everything(), ~ na_if(., "na"))))
+```
+
+## Question 5: Create a frequency table for motivation
+```{r}
+# Create a Frequency Table for motivation
+plot_freq = function(plotted_df, title, x, y = "Frequency") {
+  barplot(plotted_df,
+          main = title,
+          xlab = x,
+          ylab = y,
+          col = "lightblue"
+  )
+}
+
+motivation_table = table(df$motivation)
+plot_freq(motivation_table,
+          "Motivation for Taking the Class",
+          "Motivation"
+          )
+```
+
+## Question 6: Create a frequency table for R proficiency levels
+```{r}
+# Create a Frequency Table for Knowledge Levels
+k_table = table(df$r_level)
+plot_freq(k_table,
+          "Self-Assessed Knowledge Prior to Class",
+          "Knowledge Levels"
+)
+```
+
+## Question 7: Generate frequency tables for both expectations
+```{r}
+# Create Frequency Tables for Expectations
+df$expectation_1 = gsub("_", " ", df$expectation_1, fixed=TRUE)
+e_1 = table(df$expectation_1)
+e_2 = table(df$expectation_2)
+data = rbind(e_1, e_2)
+
+barplot(data,
+        beside = TRUE,
+        main = "Expectations for Taking the Class",
+        xlab = "Expectation",
+        ylab = "Frequency",
+        col = c("lightblue", "lightgreen"),
+        names.arg = c("Data Analyst", "R Coder"),
+        legend.text = c("Data Analyst", "R Coder")
+)
+```
+
+## Question 8: Venn diagram of overlap between expectations
+```{r}
+# Create a Venn diagram showcasing the overlap between students who chose "data analyst" for expectation_1 and "r coder" for expectation_2
+data_analyst_students = !is.na(df$expectation_1) & df$expectation_1 == "data analyst"
+r_coder_students = !is.na(df$expectation_2) & df$expectation_2 == "r_coder"
+
+venn.plot = venn.diagram(
+  x = list(
+    "Data Analyst" = which(data_analyst_students),
+    "R Coder" = which(r_coder_students)
+  ),
+  category.names = c("Data Analyst", "R Coder"),
+  fill = c("blue", "green"),
+  alpha = 0.5,
+  filename = NULL
+)
+df
+grid.draw(venn.plot)
+
+```
+
+## Question 9: Proportion of each R proficiency level as a pie chart
+```{r}
+# Proportion of R proficiency levels
+k_table_prop = prop.table(k_table)
+pie3D(k_table_prop,
+      labels=unique(df$r_level),
+      explode=0.5,
+      main="Proportion of Knowledge Levels",
+      labelcex = 1.5
+)
+```
+
+## Question 10: Cross-tabulation between R level and motivation
+```{r}
+# Cross-Tabulation between R Level and Motivation
+cross_tab <- table(df$r_level, df$motivation)
+print(cross_tab)
+```
+
+## Question 11: Stacked bar plot for cross-tabulation of R level and motivation
+```{r}
+# Generate a Stacked Bar Chart to visualize cross-tabulation
+barplot(cross_tab, 
+        main = "Stacked Bar Chart of R Level and Motivation", 
+        col = c("red", "green", "blue"), 
+        legend = rownames(cross_tab), 
+        xlab = "Motivation", 
+        ylab = "Frequency"
+)
+```
+
+## Question 12: Frequency distribution of motivation in a bar plot
+```{r}
+# Create a Frequency Table for Motivation
+motivation_table = table(df$motivation)
+plot_freq(motivation_table,
+          "Motivation for Taking the Class",
+          "Motivation"
+)
+```
+
+## Question 13: Proportion of each motivation value in a pie chart
+```{r}
+# Proportion of Motivation Values
+motivation_prop = prop.table(motivation_table)
+pie3D(motivation_prop,
+      labels=unique(df$motivation),
+      explode=0.5,
+      main="Proportion of Motivation for Taking Class",
+      labelcex = 1.5
+)
+```

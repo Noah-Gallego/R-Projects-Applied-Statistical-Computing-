@@ -1,0 +1,324 @@
+---
+title: "Lecture 3: RMarkdown and RStudio Overview"
+author: "Noah Gallego"
+date: "09 September 2024"
+output:
+word_document: 
+toc: no
+
+---
+
+
+# Overview of Rmarkdown
+
+R Markdown is a way of writing reports that includes R code and output.
+
+The goal of this document is to explain, with examples, how to use its most essential
+features. (See rather http://rmarkdown.rstudio.com.) for complete overview.
+
+This document look in turn at three aspects of R Markdown:
+
+- basic formatting
+- include R code and its output
+- include Mathematical and Statistical expression.
+ 
+# Editing and Rendering with Rmarkdown
+
+* To write R Markdown, we will need a text editor, a program that read
+and write plain text files. We will also need R/RStudio, and the package `rmarkdown`.
+
+* click the button that says "knit".
+
+* See the `render` command in the package `rmarkdown` to render without RStudio.
+
+
+### Paragraph Breaks and Forced Line Breaks
+
+* To insert a break between paragraphs, include a single completely blank line.
+* To force a line break, put _two_ blank  
+* spaces at the end of a line.
+
+```
+To insert a break between paragraphs, include a single completely blank line.
+
+To force a line break, put _two_ blank  
+spaces at the end of a line.
+
+```
+
+### Headers 
+
+* The character `#` at the beginning of a line means that the rest of the line is
+interpreted as a section header. 
+* The number of `#`s at the beginning of the
+line indicates whether it is treated as a section, sub-section,
+sub-sub-section, etc. of the document.  
+
+### Italics, Boldface format
+
+Text to be _italicized_ goes inside _a single set of underscores_ or
+*asterisks*.  Text to be **boldfaced** goes inside a __double set of
+underscores__ or **asterisks**.
+
+```
+Text to be _italicized_ goes inside _a single set of underscores_ or *asterisks*.  Text to be **boldfaced** goes inside a __double set of underscores__  or **asterisks**.
+```
+
+### Quotations
+
+Set-off quoted paragraphs are indicated by an initial `>`:
+
+> "An approximate answer to the right problem is worth a good deal more than an exact answer to an approximate problem." -- [John Tukey]. 
+
+```
+> "An approximate answer to the right problem is worth a good deal more than an exact answer to an approximate problem." -- [John Tukey]. 
+```
+
+### Bullet Lists
+
+* This is a list marked where items are marked with bullet points.
+* Each item in the list should start with a `*` (asterisk) character, or a single dash (`-`).
+* Each item should also be on a new line.
+    + Indent lines and begin them with `+` for sub-bullets.
+    + Sub-sub-bullet aren't really a thing in R Markdown.
+
+```
+* This is a list marked where items are marked with bullet points.
+* Each item in the list should start with a `*` (asterisk) character, or a single dash (`-`).
+* Each item should also be on a new line.
+    + Indent lines and begin them with `+` for sub-bullets.
+    + Sub-sub-bullet aren't really a thing in R Markdown.
+
+
+```
+### Numbered lists
+ 
+```
+1. Lines which begin with a numeral (0--9), followed by a period, will usually be interpreted as items in a numbered list.
+2. R Markdown handles the numbering in what it renders automatically.
+2. This can be handy when we lose count or don't update the numbers when editing.
+    a. Sub-lists of numbered lists, with letters for sub-items, are a thing.
+
+
+```
+
+### Highlight 
+
+
+```
+Words can be <span style="color:blue">  highlighted  </span>
+```
+
+
+# Hyperlinks and Images formating
+
+### Hyperlinks format
+
+Hyperlinks anchored to text have the [anchor in square brackets, then the link
+in parentheses](https://csub.instructure.com/courses/27923).
+
+```
+[anchor in square brackets, then the link
+in parentheses](https://csub.instructure.com/courses/27923)
+```
+
+### Images format
+
+Images begin with an exclamation mark, then the text to use if the
+image can't be displayed, then either the file address of the image
+(in the same directory as your document) or a URL.  
+
+![CSUB logo.](C:/Users/ayatawara/Downloads/CSUBlogo.png)
+
+```
+![CSUB logo.](C:/Users/ayatawara/Downloads/CSUBlogo.png)
+```
+
+```{r pressure, echo=FALSE, fig.cap="A caption", out.width = '50%'}
+knitr::include_graphics("C:/Users/ayatawara/Downloads/CSUBlogo.png")
+```
+
+
+# Including R Code
+
+The real point of R Markdown is that it lets you include your code, have the
+code run automatically when your document is rendered, and seamlessly include
+the results of that code in your document.  The code comes in two varieties,
+code **chunks** and **inline** code.
+
+### Code Chunks and Their Results
+
+A code **chunk** is simply an off-set piece of code by itself.  It is preceded
+by ` ```{r} ` on a line by itself, and ended by a line which just says ` ``` `.
+The code itself goes in between.  Here, for instance, is some code which
+loads a data set from a library, and makes a scatter plot.
+
+
+```{r}
+library(MASS)
+data(cats)
+plot(Hwt ~ Bwt, data=cats, xlab="Body weight (kg)", ylab="Heart weight (g)",col=5)
+```
+
+First, notice how the code is included, nicely formatted, in the document.
+Second, notice how the output of the code is also automatically included
+in the document.  If your code outputs numbers or text, those can be
+included too:
+
+```{r}
+with(cats, cor(Hwt, Bwt))
+```
+
+
+### Naming Chunks
+
+We can give chunks names immediately after their opening, like
+` ```{r, clevername} `.  This name is then used for the images (or other files)
+that are generated when the document is rendered.
+
+### Changing Image Sizes and Alignments
+
+There are a bunch of options for adjusting the placement of the figures which
+R produces.  `fig.align` controls the horizontal **alignment** (left, right,
+or center).
+
+When producing PDF, the options `out.height` and `out.width` let you specify
+the desired height or width of the figure, in inches, centimeters, or multiples
+of pre-defined lengths (from `LaTeX`).  So for instance ` ```{r,
+out.height="3in"} ` forces the image to be 3 inches high, while ` ```{r,
+out.width="0.48\\textwidth"} ` forces the image's width to be a bit less than
+half of the total width of the text on the page (so that two such images will
+fit side by side).  The next few figures illustrate.
+
+
+```{r, echo=FALSE, fig.width=3, fig.align="center"}
+plot(Hwt ~ Bwt, data=cats, xlab="Body weight (kg)",
+     ylab="Heart weight (g)", sub="Linear scale",col=2)
+plot(Hwt ~ Bwt, data=cats, log="xy", xlab="Body weight (kg)",
+     ylab="Heart weight (g)", sub="Logarithmic scale",col=3)
+```
+
+
+
+### Tables format
+
+The default print-out of matrices, tables, etc. from R Markdown is frankly
+ugly.  The `knitr` package contains a very basic command, `kable`, which will
+format an array or data frame more nicely for display.
+
+Compare:
+
+```{r}
+coefficients(summary(lm(Hwt ~ Bwt, data=cats)))
+```
+
+with
+
+```{r}
+library(knitr) # Only need this the first time!
+kable(coefficients(summary(lm(Hwt ~ Bwt, data=cats))))
+```
+
+
+
+### Setting Defaults for All Chunks
+
+You can tell R to set some defaults to apply to all chunks where you don't
+specifically over-ride them.  Here are the ones I generally use:
+
+```{r, eval=FALSE}
+# Need the knitr package to set chunk options
+library(knitr)
+
+# Set knitr options for knitting code into the report:
+# - Don't print out code (echo)
+# - Save results so that code blocks aren't re-run unless code changes (cache),
+# _or_ a relevant earlier code block changed (autodep), but don't re-run if the
+# only thing that changed was the comments (cache.comments)
+# - Don't clutter R output with messages or warnings (message, warning)
+  # This _will_ leave error messages showing up in the knitted report
+opts_chunk$set(echo=FALSE,
+               cache=TRUE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE)
+```
+
+
+
+### More Options
+
+See [http://yihui.name/knitr/options/] for a complete listing of possible chunk options.
+
+```{r}
+library("plot3D")
+data(iris)
+# x, y and z coordinates
+x <- sep.l <- iris$Sepal.Length
+y <- pet.l <- iris$Petal.Length
+z <- sep.w <- iris$Sepal.Width
+# Create a scatter plot
+ scatter3D(x, y, z, phi = 0, bty = "g",
+        pch = 20, cex = 2, ticktype = "detailed")
+
+
+```
+
+
+# Math in R Markdown
+
+## Getting started with equations
+
+We can write fractions: $\frac{2}{3}$. We can also handle things like estimated population growth rate, e.g., $\hat{\lambda}=1.02$. And, $\sqrt{4}=2$.
+
+$$\alpha, \beta,  \gamma, \Gamma$$
+
+$$a \pm b$$
+$$x \ge 15$$
+$$a_i \ge 0~~~\forall i$$
+
+## Matrix
+
+$$A_{m,n} =
+ \begin{pmatrix}
+  a_{1,1} & a_{1,2} & \cdots & a_{1,n} \\
+  a_{2,1} & a_{2,2} & \cdots & a_{2,n} \\
+  \vdots  & \vdots  & \ddots & \vdots  \\
+  a_{m,1} & a_{m,2} & \cdots & a_{m,n}
+ \end{pmatrix}$$
+
+## Statistics
+
+The binomial probability: $$f(y|N,p) = \frac{N!}{y!(N-y)!}\cdot p^y \cdot (1-p)^{N-y} = {{N}\choose{y}} \cdot p^y \cdot (1-p)^{N-y}$$
+
+To calculate the **mean** of \textit{n} observations of variable \textit{x}, you can use: $$\bar{x} = \frac{1}{n} \sum_{i=1}^{n}x_{i}$$ 
+
+Note that this equation looks quite nice above where it's in display math mode. It is more compact but not quite as nice looking if we present it using inline mode, e.g., $\bar{x} = \frac{1}{n} \sum_{i=1}^{n}x_{i}$.
+
+Let's do the same with the equation for **variance**. First the inline version, which is 
+$\sigma^{2} = \frac{\sum\limits_{i=1}^{n} \left(x_{i} - \bar{x}\right)^{2}} {n-1}$. And then the display mode version: 
+$$\sigma^{2} = \frac{\sum_{i=1}^{n} 
+  \left(x_{i} - \bar{x}\right)^{2}}
+  {n-1}$$
+  
+Next, it's good to look at the equation for **covariance** to see how it is just a generalization of variance to two variables. An inline version of the equation is $cov_{x,y} = \frac{\sum\limits_{i=1}^{n}{(x_i-\overline{x}) \cdot (y_i-\overline{y})} }{n-1}$. And, the display mode is: $$cov_{x,y} = \frac{\sum\limits_{i=1}^{n}{(x_i-\overline{x}) \cdot (y_i-\overline{y})} }{n-1}$$
+  
+And, finally, we'll end with the **standard deviation**. Here's the inline version, $\sigma = \sqrt{\frac{\sum\limits_{i=1}^{n} \left(x_{i} - \bar{x}\right)^{2}} {n-1}}$. And here's the display version.
+$$\sigma = \sqrt{\frac{\sum\limits_{i=1}^{n} \left(x_{i} - \bar{x}\right)^{2}} {n-1}}$$
+
+
+# Troubleshooting and Pitfalls to Avoid
+
+- Do not call `View` or `help` in your document; these are interactive commands which don't work well in scripts.
+- "It works when I source it, but it won't knit": This is basically the same problem as "it worked in the console".
+- Avoid `attach` in both the console and in your file; using it is a recipe for creating hard-to-find errors. We can still shorten expressions using `with` instead.
+- We need LaTeX to create PDFs.  If we are having trouble doing so, try switching the output format to HTML.
+    + Do try to fix your LaTeX installation later, when you don't have such time pressure; it's really useful.
+	+ LaTeX will complain if you try to print out truly enormous things.  Errors about "out of stack", or "pandoc 43", are often caused by this. Don't print out enormous things.  (Suppressing warnings and other messages may help.)
+- When we need to load data files or source someone else's code, use full URLs, rather than creating local copies and loading them from your disk.
+
+
+# Further Reading
+
+For more on R Markdown, see http://rmarkdown.rstudio.com, particularly the
+more detailed help pages (rather than the first-guides).
+
+
