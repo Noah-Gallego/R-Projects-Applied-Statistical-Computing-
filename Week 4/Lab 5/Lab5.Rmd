@@ -332,6 +332,7 @@ High Poverty counties to compare to in our dataset as shown below.
 # Check the unique values and the distribution of poverty levels
 summary(df$below.povery.level)
 table(df$poverty_class)
+write.csv(df, "../Lecture Material/clean_data.csv")
 ```
 
 # Part IV: Conclusions & Insights
@@ -352,9 +353,6 @@ table(df$poverty_class)
     -   Outliers were handled during the analysis, but the air quality
         metrics didn't exhibit many extreme values, so removing outliers
         had minimal impact on the results.
-
-    <!-- -->
-
     -   In cases where outliers were present (like for CO and NO2),
         removing them did help slightly reduce skewness and provided a
         clearer picture of the overall trend, making the insights more
