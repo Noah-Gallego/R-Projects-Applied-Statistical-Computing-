@@ -1,14 +1,14 @@
 ---
-title: 'Lab 4: RMarkdown and RStudio Overview'
+title: "Lab 4: RMarkdown and RStudio Overview"
 author: "Noah Gallego"
 date: "09 September 2024"
-output:
-  html_document:
+output: 
+  html_document: 
     toc: false
     df_print: paged
-  word_document:
+  word_document: 
     toc: false
-  pdf_document:
+  pdf_document: 
     toc: false
 ---
 

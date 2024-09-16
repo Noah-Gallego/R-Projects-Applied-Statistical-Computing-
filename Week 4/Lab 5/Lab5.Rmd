@@ -1,0 +1,299 @@
+---
+title: 'Lab 5: Comprehensive EDA Assignment'
+author: "Noah Gallego"
+date: "14 September 2024"
+output:
+  pdf_document:
+    toc: false
+  word_document:
+    toc: false
+  html_document:
+    toc: false
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part I: Data Cleaning and Preperation
+
+### Import Packages
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+### Read-In Data
+
+```{r}
+df = read.csv("Airpollutants.csv")
+head(df)
+```
+
+### Check & Deal w/ Missing Values
+
+```{r}
+# Apply to each missing value in DataFrame
+print(paste("The number of missing values in the df are:", sum(is.na(df))))
+
+numeric_columns = sapply(df, is.numeric)
+
+for(col in names(df)[numeric_columns]) {
+  df[[col]][is.na(df[[col]])] = mean(df[[col]], na.rm = TRUE)
+}
+
+df$Ozone[is.na(df$Ozone)] = mean(df$Ozone, na.rm = TRUE)
+print(paste("The number of missing values in the IMPUTED df are:", sum(is.na(df))))
+
+df
+```
+
+### Ensure Correct DTypes throughout the DataFrame
+
+```{r}
+# Check DTypes
+str(df)
+
+# white.percentage & median.income are affected columns
+df$white.percentage[df$white.percentage == "white"] = NA
+df$white.percentage = as.numeric(df$white.percentage)
+df$white.percentage[is.na(df$white.percentage)] = mean(df$white.percentage, na.rm = TRUE)
+
+df$median.income = gsub(',', '', df$median.income)
+df$median.income = as.numeric(df$median.income)
+
+str(df)
+```
+
+### View Data Distribution
+
+```{r}
+view_dist = function(df) {
+  par(mfrow=c(3, 1))
+  
+  for (col in names(df)[numeric_columns]) {
+    hist(df[[col]], main = paste("Histogram of: ", col), xlab=col)
+  }
+}
+
+view_dist(df)
+```
+
+### Handling Outliers
+
+We will use the IQR method to detect outliers. To handle these outliers, we will impute them with the median since the dataset is relatively small and the data is slightly skewed.
+
+```{r}
+for (col in names(df)[numeric_columns]) {
+  q1 = quantile(df[[col]], 0.25, na.rm = TRUE) # Q1
+  q3 = quantile(df[[col]], 0.75, na.rm = TRUE) # Q3
+  iqr = IQR(df[[col]], na.rm = TRUE)
+  
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  
+  df[[col]] [df[[col]] < lower_bound | df[[col]] > upper_bound] = mean(df[[col]])
+}
+
+view_dist(df)
+```
+
+# Part II: Numerical Summaries and Visualizations
+
+### Numerical Summaries
+
+```{r}
+summary(df)
+```
+
+### Scatterplots & Pairwise Analysis
+
+```{r}
+par(mfrow=c(4, 1))
+
+# Ozone V. Pm2.5
+ggplot(df, aes(x = Ozone, y = Pm2.5)) +
+  geom_point(color = "blue") +
+  labs(title = "Scatter Plot of Ozone vs. Pm2.5", x = "Ozone", y = "Pm2.5") +
+  theme_minimal() 
+
+# Pm2.5 vs. CO
+ggplot(df, aes(x = Pm2.5, y = CO)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter Plot of Pm2.5 vs. CO", x = "Pm2.5", y = "CO") +
+  theme_minimal() 
+
+# Median Income V. Below Poverty Level
+ggplot(df, aes(x = median.income, y = below.povery.level)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter Plot of Median Income vs. Below Poverty Level", x = "Median Income", y = "Below Poverty Level") +
+  theme_minimal() 
+
+# NO2 V. Ozone
+ggplot(df, aes(x = NO2, y = Ozone)) +
+  geom_point(color = "blue") +
+  labs(title = "Scatter Plot of NO2 vs. Ozone", x = "NO2", y = "Ozone") +
+  theme_minimal() 
+```
+
+### Correlation
+
+```{r}
+# Calculate Pearson's Correlation
+corr_Pm2_Ozone = cor(df$Ozone, df$Pm2.5, method = 'pearson')
+corr_Pm2_CO = cor(df$Pm2.5, df$CO, method = 'pearson')
+corr_Income_Poverty = cor(df$median.income, df$below.povery.level, method = 'pearson')
+corr_NO2_Ozone = cor(df$NO2, df$Ozone, method = 'pearson')
+
+cat("Correlation between Ozone and Pm2.5:", corr_Pm2_Ozone, "\n")
+cat("Correlation between Pm2.5 and CO:", corr_Pm2_CO, "\n")
+cat("Correlation between Median Income and Below Poverty Level:", corr_Income_Poverty, "\n")
+cat("Correlation between NO2 and Ozone:", corr_NO2_Ozone, "\n")
+```
+
+**1. Correlation between Ozone and Pm2.5: 0.244:** - The correlation is weakly positive. This suggests that there is a slight tendency for higher Ozone levels to be associated with higher Pm2.5 levels, but the relationship is not strong. Factors other than Pm2.5 are likely influencing Ozone levels.
+
+**2. Correlation between Pm2.5 and CO: 0.487:** - This is a moderate positive correlation. It indicates that as Pm2.5 levels increase, CO levels also tend to increase. This suggests that these two pollutants may be related, potentially coming from similar sources such as vehicle emissions or industrial activities.
+
+**3. Correlation between Median Income and Below Poverty Level: -0.832:** - This is a strong negative correlation, which is expected. As median income increases, the percentage of people below the poverty level decreases significantly. This suggests a strong inverse relationship, where areas with higher income levels have fewer people living below the poverty line.
+
+**4. Correlation between NO2 and Ozone: -0.026:** - This is a very weak negative correlation. The near-zero value indicates that there is no significant linear relationship between NO2 and Ozone in the dataset. These two pollutants do not seem to be directly related, or their relationship is influenced by other factors not captured in this simple correlation.
+
+### Histograms & Boxplots
+
+```{r}
+# Histograms Already Completed in Prior Step **
+
+par(mfrow=c(3, 1))
+
+# Create Box Plots
+# Ozone
+ggplot(df, aes(y = Ozone)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(title = "Boxplot of Ozone", y = "Ozone") +
+  theme_minimal()
+
+# Pm2.5
+ggplot(df, aes(y = Pm2.5)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(title = "Boxplot of Pm2.5", y = "Pm2.5") +
+  theme_minimal()
+
+# NO2
+ggplot(df, aes(y = NO2)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(title = "Boxplot of NO2", y = "NO2") +
+  theme_minimal()
+```
+
+# Part III: Creating and Analyzing New Categorical Variables
+
+### Creating Income Classes
+
+```{r}
+income_33rd <- quantile(df$median.income, 0.33)
+income_67th <- quantile(df$median.income, 0.67)
+
+df$income_class = cut(df$median.income,
+  breaks = c(-Inf, income_33rd, income_67th, Inf),
+  labels = c("Low Income", "Middle Class", "High Income")
+)
+
+ggplot(df, aes(x = income_class)) + 
+      geom_bar(fill = "lightblue", color = "blue") +
+      labs(title = "Distribution of Income Classes", x = "Income Class", y = "Count of Counties") +
+      theme_minimal()
+```
+
+### Analysis By Income Classes
+
+```{r}
+# Ozone boxplot by income class
+ggplot(df, aes(x = income_class, y = Ozone)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Ozone Levels Across Income Classes", x = "Income Class", y = "Ozone") +
+  theme_minimal()
+
+# Pm2.5 boxplot by income class
+ggplot(df, aes(x = income_class, y = Pm2.5)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  labs(title = "Pm2.5 Levels Across Income Classes", x = "Income Class", y = "Pm2.5") +
+  theme_minimal()
+
+# CO boxplot by income class
+ggplot(df, aes(x = income_class, y = CO)) +
+  geom_boxplot(fill = "lightcoral", color = "darkred") +
+  labs(title = "CO Levels Across Income Classes", x = "Income Class", y = "CO") +
+  theme_minimal()
+
+# NO2 boxplot by income class
+ggplot(df, aes(x = income_class, y = NO2)) +
+  geom_boxplot(fill = "lightyellow", color = "darkorange") +
+  labs(title = "NO2 Levels Across Income Classes", x = "Income Class", y = "NO2") +
+  theme_minimal()
+```
+
+**Ozone:** No significant differences in Ozone levels across income classes; median and IQR are similar for all groups.
+
+**Pm2.5:** Higher levels and greater variability in low-income counties, suggesting particulate pollution is more prevalent in these areas. High-income counties have the lowest Pm2.5 levels.
+
+**CO:** Slightly higher CO levels in middle-income counties, but overall CO distributions are similar across all income classes.
+
+**NO2:** Minimal differences across income classes, with consistent distributions and a couple of outliers in middle and high-income groups.
+
+In general, Pm2.5 shows the clearest disparity, with higher levels in lower-income counties, while Ozone, CO, and NO2 remain relatively stable across income classes.
+
+### Analyzing By Poverty Levels
+
+```{r}
+df$poverty_class <- cut(df$below.povery.level,
+                        breaks = c(-Inf, 15, 30, Inf),
+                        labels = c("Low Poverty", "Moderate Poverty", "High Poverty"))
+
+ggplot(df, aes(x = poverty_class)) +
+  geom_bar(fill = "skyblue", color = "blue") +
+  labs(title = "Distribution of Counties Across Poverty Levels", x = "Poverty Level", y = "Count of Counties") +
+  theme_minimal()
+```
+
+### Analysis By Poverty Levels
+
+```{r}
+# Ozone boxplot by poverty class
+ggplot(df, aes(x = poverty_class, y = Ozone)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Ozone Levels Across Poverty Levels", x = "Poverty Level", y = "Ozone") +
+  theme_minimal()
+
+# Pm2.5 boxplot by poverty class
+ggplot(df, aes(x = poverty_class, y = Pm2.5)) +
+  geom_boxplot(fill = "lightgreen", color = "darkgreen") +
+  labs(title = "Pm2.5 Levels Across Poverty Levels", x = "Poverty Level", y = "Pm2.5") +
+  theme_minimal()
+
+# CO boxplot by poverty class
+ggplot(df, aes(x = poverty_class, y = CO)) +
+  geom_boxplot(fill = "lightcoral", color = "darkred") +
+  labs(title = "CO Levels Across Poverty Levels", x = "Poverty Level", y = "CO") +
+  theme_minimal()
+
+# NO2 boxplot by poverty class
+ggplot(df, aes(x = poverty_class, y = NO2)) +
+  geom_boxplot(fill = "lightyellow", color = "darkorange") +
+  labs(title = "NO2 Levels Across Poverty Levels", x = "Poverty Level", y = "NO2") +
+  theme_minimal()
+```
+
+Metrics that we measured did not indicate much change between Low and Moderate Poverty classes. *However*: \* Moderate poverty counties appear to have higher Pm2.5 levels and more variability compared to low-poverty counties. This suggests that moderate poverty areas may experience worse air quality in terms of particulate matter pollution. \* Low poverty counties show lower and more consistent Pm2.5 levels, indicating better air quality in terms of particulate pollution.
+
+```{r}
+# Check the unique values and the distribution of poverty levels
+summary(df$below.povery.level)
+table(df$poverty_class)
+```
