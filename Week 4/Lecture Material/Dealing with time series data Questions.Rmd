@@ -1,0 +1,135 @@
+---
+title: "Dealing with time series data"
+author: "Noah Gallego"
+date: "2024-09-18"
+---
+
+```{r, echo=FALSE}
+require(mosaic)
+require(ggplot2)
+```
+
+
+# Import the dataset into  of S&P 500  (^GSPC.csv) datset into R as sp500_data
+```{r, echo=TRUE}
+sp_df = read.csv("^GSPC.csv")
+head(sp_df)
+
+sp_df$Date <- as.Date(sp_df$Date, format = "%m/%d/%Y")
+```
+
+# Different time formats
+
+
+We have already used some of these, and will use them again in
+the format() function:
+
+%d: Day of the month (number)
+
+%m: Month (number)
+
+%b: Month (abbreviated)
+
+%B: Month (full name)
+
+%y: year (2 digit)
+
+%Y: year (4 digit)
+
+%a: Weekday names (abbreviated)
+
+%A: Weekday names (full name)
+
+%T: Equivalent to %H:%M:%S
+
+%u: Weekday as a decimal number (1-7, Monday is 1)
+
+Specify date variable in the proper format
+
+```{r, echo=TRUE}
+sp_df$week_day <- format(sp_df$Date, "%A")
+sp_df$Month <- format(sp_df$Date, "%B")
+head(sp_df)
+```
+
+# Make a new dataframe with variables "Date", "AdjClose", "Volume"
+
+```{r , echo=FALSE}
+new_df = sp_df[c("Date", "AdjClose", "Volume")]
+head(new_df)
+```
+
+
+# Take a subset of data from 01/01/2005 to 9/22/2023
+
+
+```{r, echo=TRUE}
+cat("Old DF Shape:", nrow(new_df), "\n")
+new_df = new_df[new_df$Date >= "2005-01-01" & new_df$Date <= "2023-09-22", ]
+cat("Number of Entries from January 2005 to September 2023:", nrow(new_df))
+```
+
+#  Calculate new variable called log_ _returns using "AdjClose" & Delete rows with "NA" for log returns
+
+Log returns = log(P_t/P_t-1) = Log(Pt) - Log(P(t-1))
+where Pt denotes today's AdjClose = Adjusted closing price
+```{r, echo=TRUE}
+new_df$log_returns = c(NA, diff(log(new_df$AdjClose)))
+new_df$log_returns =  replace(new_df$log_returns, is.na(new_df$log_returns), mean(new_df$log_returns, na.rm = TRUE))
+print(nrow(new_df))
+```
+# Plot "AdjClose" vs Date for the duration
+
+```{r , echo=FALSE}
+ggplot(new_df, aes(x = Date, y = AdjClose)) + 
+  geom_line() +
+  xlab("Date") +
+  ylab("Price")
+
+```
+
+# Can you identify different times of economic hardships from this figure?
+* 2008 Financial Crisis
+* 2018 Trade War
+* 2020 COVID Pandemic
+
+# Subset data from 01/01/2018 to 09/22/2023 and draw the same diagram
+
+```{r , echo=FALSE}
+subset_df = new_df[new_df$Date >= "2018-01-01" & new_df$Date <= "2023-09-22", ]
+ggplot(subset_df, aes(x = Date, y = AdjClose)) +
+  geom_line() + 
+  xlab("Date") +
+  ylab("Price")
+```
+
+Can you identify how prices fluctuated at the beginning of the pandemic?
+
+# Subset data from 01/01/2007 to 01/01/2023 and fit a simple linear regression model to predict AdjClose (price) using volume and draw a scatterplot with fitted line as well 
+
+
+```{r , echo=FALSE}
+subset_df = new_df[new_df$Date >= "2007-01-01" & new_df$Date <= "2023-01-01", ]
+ggplot(subset_df, aes(x = Date, y = AdjClose)) + 
+  geom_line() + 
+  xlab("Date") + 
+  ylab("Price")
+
+```
+
+# View Linear Regression Descriptive Statistics
+```{r}
+line = lm(AdjClose~Volume, data = subset_df)
+summary(line)
+```
+# View Linear Regression On Plot
+```{r}
+# Subset data from 01/01/2007 to 01/01/2023 and fit a simple linear regression model to predict AdjClose (price) using volume and draw a scatterplot with fitted line as well 
+
+ggplot(subset_df, aes(x = Volume, y = AdjClose)) +
+  geom_point(color = "blue") + 
+  geom_smooth(method = 'lm', se = FALSE, color = "red") +  
+  xlab("Volume") +
+  ylab("Adjusted Close Price") +
+  ggtitle("Linear Regression of Adjusted Close Price on Volume (2007-2023)")
+```
