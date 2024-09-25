@@ -1,0 +1,113 @@
+---
+title: "Reshaping Your Data with the tidyr | Lab assignment 8"
+author: "Noah Gallego"
+date: "2024-09-25"
+output: word_document
+---
+
+# Loading the installed package to your R session
+
+This is the process of loading and attaching packages or libraries to your R session.
+
+## If you're installing a package for the first time install.packages("dplyr")
+
+```{r, echo=FALSE}
+require(tidyr)
+require(dplyr)
+```
+
+# Question 1
+
+The “produceWide.txt” dataset contains the information
+about yields of produce in all seasons. Reshape the dataset so the
+new data frame will have three columns: ID, season, and yield,
+where the variable season has four levels (spring, summer, fall and
+winter).
+
+Read the data set as produceWide
+
+```{r, echo=TRUE}
+df_wide = read.table("produceWide.txt", header = TRUE)
+head(df_wide)
+```
+
+```{r, echo=TRUE}
+df_long = df_wide %>% 
+  pivot_longer(cols = c(Spring, Summer, Fall, Winter),
+               names_to = "season",
+               values_to = "yields")
+head(df_long)
+```
+
+
+# Question 2
+
+The “produceLong.txt” dataset contains the information
+about yields of produce in all seasons. Read it as produceLong and Reshape the produceLong data frame to wide format.
+
+
+```{r, echo=TRUE}
+produce_df_long = read.table("produceLong.txt", header = TRUE)
+head(produce_df_long)
+```
+
+
+```{r, echo=TRUE}
+produce_df_wide = produce_df_long %>%
+  pivot_wider(names_from = season,
+              values_from = yield)
+head(produce_df_wide)
+```
+
+
+
+
+# Question 3
+
+Read the S&p 500 index data from "^GSPC.csv". Separate the "Date" column into three columns as "month","day","year"
+
+```{r, echo=TRUE}
+sp_df = read.csv("^GSPC.csv")
+sp_df = sp_df %>%
+  separate(col = Date,
+           into = c("month", "day", "year"),
+           sep = "/")
+head(sp_df)
+```
+
+
+# Question 4
+
+Read the "Diamonds.txt" file as Diamonds_data and create a new column price_weight by uniting the “WEIGHT” and
+“PRICE” columns by "/" .
+
+```{r, echo=TRUE}
+diamonds_data = read.table("Diamonds.txt", header = TRUE)
+diamonds_data  = diamonds_data %>%
+  unite(col = price_weight, WEIGHT, PRICE, sep = "/")
+
+head(diamonds_data)
+```
+
+# Question 5
+
+Read the "student_performance_missing.xlsx" file as student_data. You need "readxl" package for this. Install it first
+
+```{r, echo=TRUE}
+library(readxl)
+student_data = read_excel("student_performance_missing.xlsx")
+head(student_data)
+```
+
+
+Now replace missing values in Exam_score with mean of the Exam_score values
+
+```{r, echo=TRUE}
+mean_exam_score = mean(student_data$Exam_Score, na.rm = TRUE)
+
+student_data <- student_data %>%
+  mutate(Exam_Score = ifelse(is.na(Exam_Score), mean_exam_score, Exam_Score))
+
+head(student_data)
+```
+

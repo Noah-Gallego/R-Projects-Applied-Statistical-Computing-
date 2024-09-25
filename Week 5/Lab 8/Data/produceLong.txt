@@ -1,0 +1,17 @@
+ID season yield
+101 Spring 56
+102 Spring 61
+103 Spring 83
+104 Spring 57
+101 Summer 78
+102 Summer 85
+103 Summer 10
+104 Summer 95
+101 Fall 105
+102 Fall 12
+103 Fall 62
+104 Fall 46
+101 Winter 54
+102 Winter 51
+103 Winter 15
+104 Winter 28
