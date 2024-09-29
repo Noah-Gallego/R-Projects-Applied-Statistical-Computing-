@@ -1,0 +1,190 @@
+---
+title: "Lab Seven"
+author: "Noah Gallego"
+date: "2024-09-29"
+output: word_document
+---
+
+# Advanced Dplyr Assignment with Multiple Excel Files
+
+### Problem 1: Data Manipulation (PeopleData)
+```{r setup, echo = FALSE}
+# Load Packages
+library(dplyr)
+library(tidyr)
+library(readxl)
+```
+
+```{r echo = FALSE}
+# Load Data
+people_data = read_excel("../Data/PeopleData.xlsx")
+transaction_data = read_excel("../Data/TransactionsData.xlsx")
+employee_data = read_excel("../Data/EmployeeData.xlsx")
+
+# Create new df
+df1 = people_data %>% 
+  select(age, sex, race, avg_drinks_perday)
+
+# Create new Age Group Column Based on Age
+df1$age_group = cut(df1$age,
+  breaks = c(-Inf, 30, 50, Inf),
+  labels = c("Young", "Adult", "Senior"))
+
+# Create new Drinker Status Column Based on Avg Drinks / Day
+df1$drinker_status = cut(df1$avg_drinks_perday,
+                         breaks = c(-Inf, 0, 1, 3, Inf),
+                         labels = c("Non-Drinker", "Light Drinker", "Moderate Drinker", "Heavy Drinker")
+                         )
+
+# Filter seniors who are heavy drinkers & calculate the average age
+df1 %>% filter(age_group == "Senior", `avg_drinks_perday` > 3) %>%
+  group_by(sex) %>%
+  
+  summarize(
+    avg_age = mean(age, na.rm = TRUE),
+    total_count = n()
+  )
+```
+
+### Problem 2: TransactionsData and EmployeeData Analysis
+```{r}
+head(transaction_data)
+
+# Group Transaction Data By Category & Sum
+transaction_data %>% 
+  group_by(category) %>%
+  summarize(
+    total_amount = sum(amount, na.rm = TRUE),
+    average_amount = mean(amount, na.rm = TRUE)
+  )
+```
+
+```{r}
+# Join the Transaction Data w/ Employee Data 
+#head(employee_data)
+#merged_data = transaction_data %>%
+# left_join(employee_data, by = "employee_id")
+
+# There is no common column??
+```
+### Problem 3: Advanced Grouping and Ranking
+```{r}
+people_data$age_group = df1$age_group
+
+# Group By Age and Race
+grouped_data = people_data %>%
+  group_by(age_group, race) %>%
+  summarise(
+    avg_age = mean(age, na.rm = TRUE),
+    total_people = n()
+  )
+
+# Rank Individuals by avg_drinks_perday within each age_group
+ranked_data = people_data %>%
+  group_by(age_group) %>%
+  mutate(rank = dense_rank(desc(avg_drinks_perday))) %>%
+  filter(rank <= 3)
+
+ranked_data = ranked_data[order(ranked_data$rank), ]
+
+# Display the top three individuals in each group
+ranked_data
+```
+
+### Problem 4: Joining Data & Complex Summaries
+```{r}
+## Perform an inner-join between PeopleData and TransactionsData using a common column
+#joined_data = people_data %>%
+# inner_join(transaction_data, by = "customer_id")
+# No common column???? If the data was correct, it would look like:
+
+## Calculate total transaction amount for Heavy Drinkers
+# total_transaction_amount = joined_data %>%
+#  summarise(
+#    total_amount = sum(case_when(
+#      avg_drinks_perday > 3 ~ amount,
+#      TRUE ~ 0
+#    ), na.rm = TRUE)
+#  )
+
+
+# avg_transaction_by_race = joined_data %>%
+#  filter(avg_drinks_perday > 3) %>%
+#  group_by(race) %>%
+#  summarise(avg_amount = mean(amount, na.rm = TRUE))
+```
+
+### Problem 5: Pollution Characteristics
+```{r}
+pollution_df = read.table("../Data/pollution1-1.txt", header = TRUE)
+
+str(pollution_df)
+```
+### Problem 6: Pollution Data Selection & Cleaning
+```{r}
+# Clean DataFrame
+pollution_df$date = as.Date(pollution_df$date, format = "%Y-%m-%d")
+pollution_df = pollution_df %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+# Use select() to keep every variable that ends with a two
+pollution_df_four = pollution_df %>%
+  select(ends_with("2"))
+
+# Display the first few rows
+head(pollution_df_four)
+```
+
+### Problem 7: The Filter Function
+```{r}
+# Filter by a day, i.e the world championship day
+champion_df = pollution_df %>% 
+  filter(date == "2005-10-23")
+
+# Select Temp & Dew Point from date
+temp_info = champion_df %>%
+  select(tmpd, dptp)
+temp_info
+
+# Filter PM2.5 levels greater than 30 and temperature that is greater than 80
+filtered_pm_temp = pollution_df %>%
+  filter(pm25tmean2 > 30, tmpd > 80)
+filtered_pm_temp
+
+# Count the number of days that satisfy the condition
+num_days = nrow(filtered_pm_temp)
+num_days
+
+# See what months are in the filtered data
+library(lubridate)
+filtered_pm_temp %>%
+  mutate(month = month(date)) %>%
+  distinct(month)
+```
+
+### Problem 8: Arrange Dates in Descending Order
+```{r}
+# Arrange Dates in Descending Order
+df_arranged = pollution_df %>%
+  arrange(desc(date))
+
+head(df_arranged)
+```
+
+### Problem 9: Create a Year Variable and Display It
+```{r}
+# Create year Variable
+df_with_year = pollution_df %>%
+  mutate(year = year(date))
+
+head(df_with_year)
+```
+
+### Problem 10: Group Data By Year & Compute Median of O3 Levels
+```{r}
+df_median_o3 = df_with_year %>%
+  group_by(year) %>%
+  summarise(median_o3 = median(o3tmean2, na.rm = TRUE))
+
+head(df_median_o3)
+```
