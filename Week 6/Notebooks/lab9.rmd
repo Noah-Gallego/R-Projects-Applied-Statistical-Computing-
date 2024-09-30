@@ -1,0 +1,149 @@
+---
+title: "Lab Assignment Nine"
+author: "Noah Gallego"
+date: "2024-09-29"
+output: word_document
+---
+
+# Lab Assignment 9: Air Pollutant Analysis
+
+### Import Libraries
+```{r echo = FALSE}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+```
+
+### Read Data into R
+```{r}
+folder_path = "../Data/"
+
+# List all the Excel files from 2010 to 2022
+file_list = list.files(path = folder_path, pattern = "daily_42101_[0-9]{4}.csv", full.names = TRUE)
+
+# Use lapply to read all the Excel files into a list
+all_data = lapply(file_list, function(file) read.csv(file, header = TRUE))
+
+# Combine the list of data frames into one large data frame
+combined_data = bind_rows(all_data)
+df = combined_data
+
+# View the first few rows of the combined data
+head(df)
+```
+
+### Plotting CO Levels:
+```{r}
+# Map Levels Of CO vs Time
+
+# Convert to DateTime
+df$Date.Local = as.Date(df$Date.Local)
+df$Year = format(df$Date.Local, "%Y")
+
+# Get Yearly CO Levels & Group By Year
+yearly_co_levels = df %>%
+  group_by(Year) %>%
+  summarise(mean_CO = mean(Arithmetic.Mean, na.rm = TRUE))
+
+# Plot CO2 Over Years
+yearly_co_levels %>% 
+  ggplot(aes(x = as.numeric(Year), y = mean_CO)) +
+  geom_line(color = "blue") + 
+  geom_point(color = "red") +
+  labs(title = "Average CO Levels in the USA (2010 - 2022)",
+      x = "Year",
+      y = "Average CO Levels (Arithmetic Mean)") + 
+      theme_minimal()
+```
+
+### Plotting CO Levels (California Only)
+```{r}
+# Get California-Only DF
+ca_df = df %>%
+  filter(State.Name == "California" & State.Code == 6)
+
+# Get Yearly CO Levels & Group By Year
+yearly_co_levels_ca = ca_df %>%
+  group_by(Year) %>%
+  summarise(mean_CO = mean(Arithmetic.Mean, na.rm = TRUE))
+
+# Plot CO2 Over Years
+yearly_co_levels_ca %>% 
+  ggplot(aes(x = as.numeric(Year), y = mean_CO)) +
+  geom_line(color = "blue") + 
+  geom_point(color = "red") +
+  labs(title = "Average CO Levels in California (2010 - 2022)",
+      x = "Year",
+      y = "Average CO Levels in CA (Arithmetic Mean)") + 
+      theme_minimal()
+```
+
+### Reading SO_2 Data
+```{r}
+# Fetch File List
+remaining_file_list = list.files(path = folder_path, pattern = "daily_42401_[0-9]{4}.csv", full.names = TRUE)
+
+# Use lapply to read all the Excel files into a list
+all_data_remaining = lapply(remaining_file_list, function(file) read.csv(file, header = TRUE))
+
+# Combine the list of data frames into one large data frame
+so2_df = bind_rows(all_data_remaining)
+
+# View the first few rows of the combined data
+head(so2_df)
+```
+
+
+### Merging CO & SO_2 DataFrame
+```{r}
+# Clean 
+co_df = df
+co_df$Date.Local = as.Date(co_df$Date.Local)
+co_df$Year = format(co_df$Date.Local, "%Y")
+
+so2_df$Date.Local = as.Date(so2_df$Date.Local)
+so2_df$Year = format(so2_df$Date.Local, "%Y")
+
+co_df = co_df %>% distinct(Date.Local, .keep_all = TRUE)
+so2_df = so2_df %>% distinct(Date.Local, .keep_all = TRUE)
+
+co_df = co_df %>% select(Date.Local, Arithmetic.Mean)
+so2_df = so2_df %>% select(Date.Local, Arithmetic.Mean)
+
+sum(duplicated(co_df$Date.Local))
+sum(duplicated(so2_df$Date.Local))
+
+# Merge using inner_join to only include matching dates
+merged_data = inner_join(co_df, so2_df, by = "Date.Local")
+
+# View the merged data
+head(merged_data)
+```
+
+### Calculate Monthly Means
+```{r}
+merged_data = merged_data %>%
+  mutate(Month = format(Date.Local, "%Y-%m"))
+
+# Calculate monthly median for both CO and SO2
+monthly_medians = merged_data %>%
+  group_by(Month) %>%
+  summarise(monthly_median_CO = median(Arithmetic.Mean.x, na.rm = TRUE),
+            monthly_median_SO2 = median(Arithmetic.Mean.y, na.rm = TRUE))
+
+head(monthly_medians)
+```
+
+### Visualization
+```{r}
+# Plot monthly median CO and SO2 levels over time
+ggplot(monthly_medians, aes(x = as.Date(paste0(Month, "-01")))) +
+  geom_line(aes(y = monthly_median_CO, color = "CO"), size = 1) +  
+  geom_line(aes(y = monthly_median_SO2, color = "SO2"), size = 1) + 
+  labs(title = "Monthly Median CO and SO2 Levels in the USA",
+       x = "Date",
+       y = "Median Pollutant Levels (Arithmetic Mean)") +
+  scale_color_manual(values = c("CO" = "blue", "SO2" = "red"), name = "Pollutant") + 
+  theme_minimal()
+
+```
