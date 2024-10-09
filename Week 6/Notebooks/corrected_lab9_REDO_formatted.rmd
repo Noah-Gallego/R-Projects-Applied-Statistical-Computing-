@@ -1,0 +1,162 @@
+---
+title: "Lab Assignment Nine"
+author: "Noah Gallego"
+date: "2024-10-04"
+output: word_document
+---
+
+# Lab Assignment 9: Air Pollutant Analysis
+
+### Import Libraries
+
+```{r}
+library(dplyr)      # For data manipulation
+library(tidyr)      # For data reshaping
+library(ggplot2)    # For plotting
+library(gganimate)  # For animation
+library(maps)       # For map data
+library(transformr) # For animating polygons
+library(tidyverse)
+library(magick)     # For combining animations
+```
+
+### Read Data into R
+
+```{r}
+folder_path = "../Data/"
+
+# List all the CSV files from 2010 to 2022 for CO and SO2
+file_list_CO = list.files(path = folder_path, pattern = "daily_42101_[0-9]{4}.csv", full.names = TRUE)
+file_list_SO2 = list.files(path = folder_path, pattern = "daily_42401_[0-9]{4}.csv", full.names = TRUE)
+
+# Use lapply to read all the CSV files into a list for both CO and SO2
+all_data_CO = lapply(file_list_CO, function(file) read.csv(file, header = TRUE))
+all_data_SO2 = lapply(file_list_SO2, function(file) read.csv(file, header = TRUE))
+
+# Combine the list of data frames into one large data frame for both pollutants
+combined_data_CO = bind_rows(all_data_CO)
+combined_data_SO2 = bind_rows(all_data_SO2)
+
+head(combined_data_CO)
+head(combined_data_SO2)
+```
+
+```{r}
+# Merge CO and SO2 data by Date and Location
+df_CO = combined_data_CO %>% 
+  select(Date.Local, State.Name, State.Code, County.Name, Arithmetic.Mean) %>%
+  rename(CO_Mean = Arithmetic.Mean)
+
+df_SO2 = combined_data_SO2 %>% 
+  select(Date.Local, State.Name, State.Code, County.Name, Arithmetic.Mean) %>%
+  rename(SO2_Mean = Arithmetic.Mean)
+
+merged_data = inner_join(df_CO, df_SO2, by = c("Date.Local", "State.Name", "State.Code", "County.Name"))
+
+# Convert Date.Local to Date format
+merged_data$Date.Local = as.Date(merged_data$Date.Local)
+
+# Extract Year from Date.Local
+merged_data$Year = format(merged_data$Date.Local, "%Y")
+
+head(merged_data)
+```
+
+### Static Plots for CO and SO2 Levels
+
+```{r}
+# Group by Year and State, calculate mean for both CO and SO2
+yearly_pollutant_levels = merged_data %>%
+  group_by(Year, State.Name) %>%
+  summarise(mean_CO = mean(CO_Mean, na.rm = TRUE), 
+            mean_SO2 = mean(SO2_Mean, na.rm = TRUE))
+
+# Static Plot of CO levels across years
+ggplot(yearly_pollutant_levels, aes(x = as.numeric(Year), y = mean_CO, group = State.Name, color = State.Name)) +
+  geom_line() +
+  labs(title = "Average CO Levels Across States (2010-2022)", x = "Year", y = "CO Levels") +
+  theme_minimal()
+
+# Static Plot of SO2 levels across years
+ggplot(yearly_pollutant_levels, aes(x = as.numeric(Year), y = mean_SO2, group = State.Name, color = State.Name)) +
+  geom_line() +
+  labs(title = "Average SO2 Levels Across States (2010-2022)", x = "Year", y = "SO2 Levels") +
+  theme_minimal()
+```
+
+### Animation of CO and SO2 Levels by State Over Time
+
+```{r}
+us_map = map_data("state")
+
+# Create animated plots for CO and SO2 levels on the US map over time
+# Join the pollutant data with the map data by state
+merged_map_data = yearly_pollutant_levels %>%
+  mutate(region = tolower(State.Name)) %>%
+  inner_join(us_map, by = "region")
+
+# Animated CO levels on US map
+animated_CO_map = ggplot(merged_map_data, aes(x = long, y = lat, group = group, fill = mean_CO)) +
+  geom_polygon(color = "black") +
+  coord_fixed(1.3) +
+  scale_fill_viridis_c() +
+  labs(title = "CO Levels in the USA ({closest_state})", fill = "CO Levels") +
+  theme_void() +
+  transition_states(Year, transition_length = 1, state_length = 1) +
+  ease_aes('linear')
+
+# Animated SO2 levels on US map
+animated_SO2_map = ggplot(merged_map_data, aes(x = long, y = lat, group = group, fill = mean_SO2)) +
+  geom_polygon(color = "black") +
+  coord_fixed(1.3) +
+  scale_fill_viridis_c() +
+  labs(title = "SO2 Levels in the USA ({closest_state})", fill = "SO2 Levels") +
+  theme_void() +
+  transition_states(Year, transition_length = 1, state_length = 1) +
+  ease_aes('linear')
+
+# Render and save the animations as GIFs
+animation_CO_map = animate(animated_CO_map, nframes = 13 * 5, fps = 5, width = 700, height = 500)
+animation_SO2_map = animate(animated_SO2_map, nframes = 13 * 5, fps = 5, width = 700, height = 500)
+
+# Save the GIFs to files
+anim_save("CO_mean_us_map.gif", animation = animation_CO_map)
+anim_save("SO2_mean_us_map.gif", animation = animation_SO2_map)
+
+# Display the CO animation
+animation_CO_map
+
+# Display the SO2 animation
+animation_SO2_map
+```
+
+### Combining CO and SO2 Animations
+
+```{r}
+# Read the saved GIFs
+gif1 = image_read("CO_mean_us_map.gif")
+gif2 = image_read("SO2_mean_us_map.gif")
+
+# Get the minimum number of frames
+nframes = min(length(gif1), length(gif2))
+
+# Initialize an empty list to store combined frames
+combined_frames = list()
+
+# Loop through each frame and append gif1 and gif2 side by side
+for (i in 1:nframes) {
+  frame1 = image_scale(gif1[i], "600x500")
+  frame2 = image_scale(gif2[i], "600x500")
+  combined_frames[[i]] = image_append(c(frame1, frame2), stack = FALSE)
+}
+
+# Combine all frames into a single image sequence
+combined_gif = image_join(combined_frames)
+
+# Animate the combined frames
+animated_combined_gif = image_animate(combined_gif, fps = 5)
+
+# Display & Save
+print(animated_combined_gif)
+image_write(animated_combined_gif, "combined_map_animation.gif")
+```
