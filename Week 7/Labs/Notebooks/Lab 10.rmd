@@ -1,0 +1,81 @@
+---
+title: "Lab Assignment Ten"
+author: "Noah Gallego"
+date: "2024-10-11"
+output: word_document
+---
+
+# Lab Assignment 10: PCA Analysis on the MTCars Dataset
+
+### Import Libraries
+```{r}
+library(dplyr)      # For data manipulation
+library(ggplot2)    # For plotting
+library(ggrepel)    # For Last Plot
+library(factoextra) # For Scree Plot
+```
+
+### Exploring the Dataset
+```{r}
+data("mtcars")
+df = mtcars
+# Remove Unessecary Columns
+df = df %>% select(c("mpg", "disp", "hp", "drat", "wt", "qsec"))
+
+# Display First Few Columns
+head(df)
+
+# Scale Dataset for PCA
+df_scaled = scale(df)
+apply(df_scaled, 2, sd)
+```
+
+### Perform PCA 
+```{r}
+# Perform PCA
+pca = prcomp(df_scaled)
+summary(pca)
+
+# Display Proportion of Variance
+fviz_eig(pca, addlabels = TRUE, ylim = c(0, 100))  # Scree plot showing variance explained by components
+
+# Examine Loadings
+pca$rotation
+
+# Display Biplot
+biplot(pca, scale = 0, cex = c(0.3, 1))
+```
+
+### Diagnostic Plots & Visualizing Principal Components
+```{r}
+# Create a data frame with the principal components and model
+pca_df = data.frame(
+  pca$x, model = rownames(df)
+)
+
+variance_explained = pca$sdev^2 / sum(pca$sdev^2)
+# Examine PCA Components on a 2D Plane
+ggplot(pca_df, aes(x = PC1, y = PC2, color = model)) +
+  geom_point(size = 2) +
+  ggtitle("PCA of MTCars Dataset") +
+  xlab(paste0("PC1 (", round(variance_explained[1] * 100, 1), "% Variance)")) +
+  ylab(paste0("PC2 (", round(variance_explained[2] * 100, 1), "% Variance)")) +
+  theme_minimal()
+```
+
+
+### Outlier Detection
+```{r}
+pca_distances = sqrt(rowSums(pca$x[, 1:2]^2))
+outlier_threshold = quantile(pca_distances, 0.95)
+outliers = pca_distances > outlier_threshold
+
+pca_df$outliers = outliers
+
+# Plot the PCA with outliers labeled
+ggplot(pca_df, aes(x = PC1, y = PC2, color = outliers)) +
+  geom_point(size = 2) +
+  geom_text_repel(data = subset(pca_df, outliers), aes(label = model), 
+                  size = 3, box.padding = 0.5, max.overlaps = Inf) +
+  labs(title = "Outliers Detected Using PCA")
+```
