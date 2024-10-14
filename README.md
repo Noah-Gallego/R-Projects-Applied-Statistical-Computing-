@@ -6,8 +6,6 @@
 
 This repository contains various lab assignments and projects for **Math 3210: Applied Statistical Computing and Multivariate Methods**, completed during Fall 2024 at California State University, Bakersfield. These projects focus on applying **R programming** to perform **data analysis, visualization, and multivariate statistical techniques** on real-world datasets.
 
-[![CO Mean US Map](https://github.com/Noah-Gallego/R-Projects-Applied-Statistical-Computing-/blob/main/Week%206/Notebooks/Output/CO_mean_us_map.gif)](https://github.com/Noah-Gallego/R-Projects-Applied-Statistical-Computing-/blob/main/Week%206/Notebooks/Output/CO_mean_us_map.gif)
-
 [![Alternative Display](https://github.com/Noah-Gallego/R-Projects-Applied-Statistical-Computing-/blob/main/Week%206/Notebooks/Output/combined_animation.gif)
 
 ## Table of Contents
