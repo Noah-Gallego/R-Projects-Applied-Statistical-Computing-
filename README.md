@@ -1,4 +1,4 @@
-# R Projects: Applied Statistical Computing
+# R Projects: Applied Statistical Computing (*Currently Ongoing)
 
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![R](https://img.shields.io/badge/R-v4.0.5-blue.svg)
