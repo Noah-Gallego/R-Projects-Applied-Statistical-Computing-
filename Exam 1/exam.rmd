@@ -1,0 +1,113 @@
+---
+title: "In-Class Assignment 2"
+author: "Noah Gallego"
+date: "2024-10-18"
+output: word_document
+---
+
+# Assignment One
+## Import Libraries & Read-In Data
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(caret)
+library(factoextra) 
+library(mclust)
+
+train_speed_df = read.csv("train_speed.csv")
+energy_usage_df = read.csv("energy_usage.csv")
+passenger_count_df = read.csv("passenger_count.csv")
+trip_duration_df = read.csv("trip_duration.csv")
+train_info_df = read.csv("train_info.csv")
+```
+
+## Handle Missing Values
+```{r}
+# Combine All Dataframes by Trip_ID
+merged_df = merge(train_speed_df, energy_usage_df, by = "Trip_ID")
+merged_df = merge(merged_df, passenger_count_df, by = "Trip_ID")
+merged_df = merge(merged_df, trip_duration_df, by = "Trip_ID")
+merged_df = merge(merged_df, train_info_df, by = "Trip_ID")
+
+# Handle Missing Values
+colnames(merged_df)[colSums(is.na(merged_df)) > 0]
+
+merged_df <- merged_df %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+glimpse(merged_df)
+```
+
+## Summary Statistics
+```{r}
+# Summary Stats for Each Col
+summary(merged_df$Trip_ID)
+summary(merged_df$Speed)
+summary(merged_df$Energy)
+summary(merged_df$Passengers)
+summary(merged_df$Duration)
+summary(merged_df$Train_Type)
+```
+
+## Visualize Relationships
+```{r}
+ggplot(merged_df, mapping = aes(x = Speed, y = Energy)) + 
+  geom_point(mapping = aes(color = Train_Type)) +
+  geom_smooth()
+
+ggplot(merged_df, mapping = aes(x = Passengers, y = Speed)) + 
+  geom_point(mapping = aes(color = Train_Type)) +
+  geom_smooth()
+
+ggplot(merged_df, mapping = aes(x = Duration, y = Passengers)) + 
+  geom_point(mapping = aes(color = Train_Type)) +
+  geom_smooth()
+```
+
+## Principal Component Analysis (PCA)
+```{r}
+# merged_df$Type = dummyVars(" ~ .", data = merged_df$Train_Type)
+# Scale DataFrame (Attempted to One-Hot Encode Train_Type)
+prescale = merged_df %>% select(c("Speed", "Energy", "Passengers", "Duration"))
+df_scaled = scale(prescale)
+apply(df_scaled, 2, sd)
+
+# Perform PCA
+pca = prcomp(df_scaled)
+summary(pca)
+
+# Display Proportion of Variance
+fviz_eig(pca, addlabels = TRUE, ylim = c(0, 100))  # Scree plot showing variance explained by components
+
+# Examine Loadings
+pca$rotation
+
+# Display Biplot
+biplot(pca, scale = 0, cex = c(0.3, 1))
+```
+
+## K-Means Clustering
+```{r}
+km.out = kmeans(pca$x[, 1:3], centers = 3, nstart = 20)
+
+merged_df$Cluster = as.factor(km.out$cluster)
+
+merged_df$Train_Type = as.factor(merged_df$Train_Type)
+
+confusion_matrix = table(merged_df$Cluster, merged_df$Train_Type)
+
+# Print the confusion matrix
+print(confusion_matrix)
+
+ari = adjustedRandIndex(merged_df$Cluster, merged_df$Train_Type)
+
+# Print the ARI score
+print(paste("Adjusted Rand Index (ARI):", ari))
+
+ggplot(merged_df, aes(x = pca$x[, 1], y = pca$x[, 2], color = Train_Type, shape = Cluster)) +
+  geom_point(size = 2) +
+  labs(title = "K-means Clustering vs. Train_Type (PCA Components)",
+       x = "PC1", y = "PC2") +
+  theme_minimal()
+```
