@@ -1,0 +1,576 @@
+---
+title: "Take-Home Exam One"
+author: "Noah Gallego"
+date: "2024-10-19"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+# Import Libraries
+```{r}
+library(dplyr)      # For data manipulation
+library(ggplot2)    # For plotting
+library(ggrepel)    # For labeling plots
+library(factoextra) # For Scree Plot and K-means visualization
+library(readxl)     # For reading Excel files
+library(lubridate)  # For handling date-related operations
+library(maps)       # For map data
+library(gganimate)  # For animating polygons
+library(cluster)    # For clustering analysis
+```
+
+# Read-In Data
+```{r}
+# Load the datasets required for analysis
+student_data = read_excel("student_performance_missing.xlsx")
+stocks_data = read.table("stocks2.txt", header = TRUE)
+airbnb_data = read.csv("airbnb.csv")
+```
+
+# Question One: Summary Function
+
+## Define Summary Function
+```{r}
+# Function to summarize data frame
+# Inputs: df - data frame to summarize
+# Outputs: Class information, summary statistics, and bar plots for categorical variables
+
+display_results = function(df) {
+  for (col_name in names(df)) {
+    col_data = df[[col_name]]  # Get the column data
+    
+    # Find class of each variable of the data frame
+    cat("The class of", col_name, "is:", class(col_data), "\n")
+    
+    if (is.numeric(col_data)) {
+      # Impute missing values with the mean if any are detected
+      if (any(is.na(col_data))) {
+        cat("Missing values detected in", col_name, "- imputing with mean.\n")
+        df[[col_name]][is.na(col_data)] = mean(col_data, na.rm = TRUE)
+      }
+      
+      # Print summary statistics for numeric columns
+      cat("\nSummary statistics for", col_name, ":\n")
+      cat("Mean:", mean(col_data, na.rm = TRUE), "\n")
+      cat("Median:", median(col_data, na.rm = TRUE), "\n")
+      cat("Variance:", var(col_data, na.rm = TRUE), "\n")
+      cat("IQR:", IQR(col_data, na.rm = TRUE), "\n")
+      cat("Standard Deviation:", sd(col_data, na.rm = TRUE), "\n\n")
+      
+    } else if (is.factor(col_data) || is.character(col_data)) {
+      # Create a bar plot for categorical variables
+      plot = ggplot(data = df, aes(x = col_data)) + 
+        geom_bar(color = "blue", fill = rgb(0.1, 0.4, 0.5, 0.7)) +
+        labs(title = paste("Bar Plot of", col_name), x = col_name, y = "Count") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      
+      print(plot)
+    }
+  }
+}
+
+# Test the Function with Modified Student Data
+# Convert Exam_Score to numeric before running the function
+copy = student_data
+copy$Exam_Score = as.numeric(copy$Exam_Score)
+display_results(copy)
+```
+
+# Question Two: Vector Conversion Function
+
+## Define Conversion Function
+```{r}
+# Function to remove outliers and draw boxplots
+# Inputs: col - vector to analyze
+# Outputs: Boxplots of original data vs. data without outliers
+
+convert_vector = function(col) {
+  # Check whether col is numeric or not
+  if (!is.numeric(col)) {
+    cat("The vector", names(col), "is not numeric.")
+    return()
+  } else {
+    # Remove outliers using the IQR method
+    q1 = quantile(col, 0.25, na.rm = TRUE)
+    q3 = quantile(col, 0.75, na.rm = TRUE)
+    iqr_val = IQR(col, na.rm = TRUE)
+    
+    lower_bound = q1 - 1.5 * iqr_val
+    upper_bound = q3 + 1.5 * iqr_val
+    
+    filtered_col = col[col >= lower_bound & col <= upper_bound]
+    
+    # Draw boxplots: with and without outliers
+    par(mfrow = c(1, 2))
+    boxplot(col, main = "With Outliers", col = "lightblue", border = "blue")
+    boxplot(filtered_col, main = "Without Outliers", col = "lightgreen", border = "green")
+  }
+}
+
+# Test the Function
+convert_vector(student_data$Attendance)
+convert_vector(student_data$Study_Time)
+```
+
+# Question Three: Stock Data Analysis
+
+## Data Cleaning and Summary Statistics
+```{r}
+# Examine Stock Data
+head(stocks_data)
+
+suppressWarnings({
+  # Correct data types for stock data
+  stocks_data$Date = as.Date(stocks_data$Date, format = "%m/%d/%Y")
+  dates = stocks_data$Date
+  
+  # Convert all columns (except Date) to numeric
+  stocks_data[, 2:ncol(stocks_data)] = stocks_data[, 2:ncol(stocks_data)] %>%
+    mutate_all(as.numeric)
+  stocks_data$Date = dates
+})
+
+# Deal with NA's by replacing with median
+stocks_data[, 2:ncol(stocks_data)] = stocks_data[, 2:ncol(stocks_data)] %>% 
+  mutate_all(~ replace(., is.na(.), median(., na.rm = TRUE)))
+
+# Calculate summary statistics
+cat("AMZN Five Number Summary: \n")
+summary(stocks_data$AMZN)
+cat("\nDUK Five Number Summary: \n")
+summary(stocks_data$DUK)
+cat("\nKO Five Number Summary: \n")
+summary(stocks_data$KO)
+```
+
+## Days with High Closing Prices
+```{r}
+# Calculate number of days with closing price > 20% higher than the mean
+stocks_data[, 2:ncol(stocks_data)] %>%
+  summarise_all(~ sum(. > 1.2 * mean(., na.rm = TRUE))) -> days_higher_than_mean
+
+cat("Days higher than the mean: (AMZN, DUK, KO)\n")
+print(days_higher_than_mean)
+```
+
+## Calculate Daily Returns
+```{r}
+# Calculate daily returns for each company
+returns = list()
+
+for (i in 2:ncol(stocks_data)) {
+  return_vector = numeric(nrow(stocks_data) - 1)
+  
+  for (j in 2:nrow(stocks_data)) {
+    return_vector[j - 1] = (stocks_data[j, i] - stocks_data[j - 1, i]) / stocks_data[j - 1, i]
+  }
+  
+  returns[[colnames(stocks_data)[i]]] = return_vector
+}
+
+return_df = as.data.frame(returns)
+head(return_df, 10)
+```
+
+## Monthly Mean Closing Prices
+```{r}
+# Extract month and calculate monthly averages for each company
+stocks_data$Month = format(stocks_data$Date, "%Y-%m")
+
+monthly_means = stocks_data %>%
+  group_by(Month) %>%
+  summarise(
+    monthly_AMZN = mean(AMZN, na.rm = TRUE), 
+    monthly_DUK = mean(DUK, na.rm = TRUE),  
+    monthly_KO = mean(KO, na.rm = TRUE)
+  )
+
+# Plot monthly mean prices for each company
+## Amazon (AMZN)
+ggplot(monthly_means, aes(x = Month, y = monthly_AMZN)) +
+  geom_line(color = "blue") +
+  geom_point(color = "blue") +
+  labs(title = "Monthly Mean Closing Prices: AMZN", x = "Month", y = "Mean Closing Price") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Duke Energy (DUK)
+ggplot(monthly_means, aes(x = Month, y = monthly_DUK)) +
+  geom_line(color = "red") +
+  geom_point(color = "red") +
+  labs(title = "Monthly Mean Closing Prices: DUK", x = "Month", y = "Mean Closing Price") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Coca-Cola (KO)
+ggplot(monthly_means, aes(x = Month, y = monthly_KO)) +
+  geom_line(color = "green") +
+  geom_point(color = "green") +
+  labs(title = "Monthly Mean Closing Prices: KO", x = "Month", y = "Mean Closing Price") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Question Four: AirBNB Data Analysis
+
+## Data Inspection and Cleaning
+```{r}
+# Inspect AirBNB Data Structure
+str(airbnb_data, 2)
+
+# Drop unnecessary columns
+airbnb_data = subset(airbnb_data, select = -c(latitude, longitude, last_modified))
+```
+
+## Guest Accommodation Analysis
+```{r}
+# Filter for 'Entire home/apt' and calculate accommodation statistics
+apt_home_df = airbnb_data[airbnb_data$room_type == 'Entire home/apt', ]
+
+# Calculate average and maximum accommodation capacity
+guests_mean = mean(apt_home_df$accommodates, na.rm = TRUE)
+guests_max = max(apt_home_df$accommodates, na.rm = TRUE)
+
+cat("Average Accommodation for Entire Home/Apt:", guests_mean, "\n")
+cat("Maximum Accommodation for Entire Home/Apt:", guests_max, "\n")
+```
+
+## Neighborhood Satisfaction
+```{r}
+# Calculate average satisfaction by neighborhood and display top 10
+osat = airbnb_data %>%
+  group_by(neighborhood) %>%
+  summarise(avg = mean(overall_satisfaction, na.rm = TRUE)) %>%
+  arrange(desc(avg))
+
+head(osat, 10)
+```
+
+# Question 5: EPA Air Data Analysis
+## Load Pollutant Data
+```{r}
+folder_path = "Air_Data/"
+
+# List all the CSV files for each pollutant (Ozone, SO2, CO, NO2)
+file_list_CO = list.files(path = folder_path, pattern = "daily_42101_[0-9]{4}.csv", full.names = TRUE)   # CO
+file_list_SO2 = list.files(path = folder_path, pattern = "daily_42401_[0-9]{4}.csv", full.names = TRUE)  # SO2
+file_list_NO2 = list.files(path = folder_path, pattern = "daily_42602_[0-9]{4}.csv", full.names = TRUE)  # NO2
+file_list_Ozone = list.files(path = folder_path, pattern = "daily_44201_[0-9]{4}.csv", full.names = TRUE)  # Ozone
+
+# Function to load and extract required columns
+load_pollutant_data = function(files, pollutant_name) {
+  pollutant_data = lapply(files, function(file) {
+    data = read.csv(file, header = TRUE)
+    data %>%
+      select(Date.Local, State.Name, County.Name, Arithmetic.Mean) %>%  # Extract the required columns
+      rename(State = State.Name, County = County.Name, !!pollutant_name := Arithmetic.Mean)
+  })
+  bind_rows(pollutant_data)
+}
+
+# Load and combine data for each pollutant
+combined_data_CO = load_pollutant_data(file_list_CO, "CO")
+combined_data_SO2 = load_pollutant_data(file_list_SO2, "SO2")
+combined_data_NO2 = load_pollutant_data(file_list_NO2, "NO2")
+combined_data_Ozone = load_pollutant_data(file_list_Ozone, "Ozone")
+
+# Combine the pollutants into a single DataFrame by matching on Date, State, and County
+combined_data = combined_data_Ozone %>%
+  full_join(combined_data_SO2, by = c("Date.Local", "State", "County")) %>%
+  full_join(combined_data_CO, by = c("Date.Local", "State", "County")) %>%
+  full_join(combined_data_NO2, by = c("Date.Local", "State", "County"))
+
+combined_data = combined_data %>%
+  rename(Date = Date.Local)
+```
+
+## Group and Summarize Pollutant Data
+```{r}
+combined_data_cleaned = combined_data %>%
+  group_by(Date, State, County) %>%
+  summarise(
+    Ozone = mean(Ozone, na.rm = TRUE),
+    SO2 = mean(SO2, na.rm = TRUE),
+    CO = mean(CO, na.rm = TRUE),
+    NO2 = mean(NO2, na.rm = TRUE)
+  )
+```
+
+## Visualize Distribution of Pollutant Levels
+```{r}
+combined_data_cleaned %>%
+  gather(Pollutant, Value, Ozone:CO) %>%
+  ggplot(aes(x = Value, fill = Pollutant)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  facet_wrap(~ Pollutant, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Pollutant Levels", x = "Pollutant Value", y = "Count")
+```
+
+## Weekly Means
+```{r}
+combined_data_cleaned$Date = as.Date(combined_data_cleaned$Date)
+
+weekly_means = combined_data_cleaned %>%
+  group_by(Week = floor_date(Date, "week")) %>%
+  summarise(across(c(Ozone, SO2, CO, NO2), mean, na.rm = TRUE))
+```
+
+## Plot Weekly Means
+```{r}
+weekly_means %>%
+  gather(Pollutant, Value, Ozone:NO2) %>%
+  ggplot(aes(x = Week, y = Value, color = Pollutant)) +
+  geom_line() +
+  labs(title = "Weekly Mean Levels of Pollutants", x = "Week", y = "Mean Pollutant Level") +
+  theme_minimal()
+
+combined_data_cleaned$Year = format(as.Date(combined_data_cleaned$Date), "%Y")
+```
+
+## Function to Plot Pollutant Maps for a Given State
+```{r}
+plot_pollutant_map = function(data, state_name) {
+  data$County = tolower(data$County)
+  state_data = data[data$State == state_name, ]
+  
+  # Group and summarise the pollutants
+  state_data = state_data %>%
+    group_by(County) %>%
+    summarise(
+      Ozone = mean(Ozone, na.rm = TRUE),
+      SO2 = mean(SO2, na.rm = TRUE),
+      CO = mean(CO, na.rm = TRUE),
+      NO2 = mean(NO2, na.rm = TRUE)
+    )
+  
+  # Load map data for U.S. counties and filter for the specific state
+  state_map = map_data("county")
+  state_map = state_map[state_map$region == tolower(state_name), ]
+  state_map$subregion = tolower(state_map$subregion)
+  
+  # Merge map data with state pollutant data
+  state_map_data = left_join(state_map, state_data, by = c("subregion" = "County"))
+  
+  # Plot Ozone levels
+  ggplot(state_map_data, aes(x = long, y = lat, group = group, fill = Ozone)) +
+    geom_polygon(color = "black") +
+    coord_fixed(1.3) +
+    scale_fill_viridis_c(option = "plasma", na.value = "white") +  
+    theme_minimal() +
+    labs(title = paste("Average Ozone Levels by County in", state_name), fill = "Ozone Levels")
+}
+
+plot_pollutant_map(combined_data_cleaned, "Florida")
+```
+
+## California Map
+```{r}
+# Filter the data to include only California counties
+ca_data = combined_data_cleaned[combined_data_cleaned$State == "California", ]
+
+# Aggregate pollutant data by County
+ca_data_summary = aggregate(cbind(Ozone, SO2, CO, NO2) ~ County, 
+                            data = ca_data, 
+                            FUN = function(x) mean(x, na.rm = TRUE))
+
+# Load U.S. county map data
+california_map = map_data("county")
+
+# Filter map data for California
+california_map = california_map[california_map$region == "california", ]
+
+# Ensure lowercase consistency for merging
+california_map$subregion = tolower(california_map$subregion)
+ca_data_summary$County = tolower(ca_data_summary$County)
+
+# Merge map data with pollutant data by county
+california_map_data = california_map %>%
+  left_join(ca_data_summary, by = c("subregion" = "County"))
+
+# Plot Ozone levels by county in California
+ggplot(california_map_data, aes(x = long, y = lat, group = group, fill = Ozone)) +
+  geom_polygon(color = "black") +
+  coord_fixed(1.3) +
+  scale_fill_viridis_c(option = "plasma", na.value = "white") +  # Color scale
+  theme_minimal() +
+  labs(title = "Average Ozone Levels by County in California", fill = "Ozone Levels") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()
+  )
+
+# Plot SO2 levels by county in California
+ggplot(california_map_data, aes(x = long, y = lat, group = group, fill = SO2)) +
+  geom_polygon(color = "black") +
+  coord_fixed(1.3) +
+  scale_fill_viridis_c(option = "magma", na.value = "blue") +
+  theme_minimal() +
+  labs(title = "Average SO2 Levels by County in California", fill = "SO2 Levels")
+```
+## Animated Map
+```{r}
+yearly_averages = combined_data_cleaned %>%
+  group_by(Year, State, County) %>%
+  summarise(
+    Ozone = mean(Ozone, na.rm = TRUE),
+    SO2 = mean(SO2, na.rm = TRUE),
+    CO = mean(CO, na.rm = TRUE),
+    NO2 = mean(NO2, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+# Ensure 'Year' is treated as a character for data manipulation
+yearly_averages$Year = as.character(yearly_averages$Year)
+
+# Load map data for U.S. counties
+county_map = map_data("county")
+
+# Ensure lowercase county names and state names for consistency in merging
+county_map$subregion = tolower(county_map$subregion)
+yearly_averages$County = tolower(yearly_averages$County)
+yearly_averages$State = tolower(yearly_averages$State)
+
+# Replace missing values in critical columns with "unknown"
+yearly_averages[is.na(yearly_averages$State), "State"] = "unknown"
+yearly_averages[is.na(yearly_averages$County), "County"] = "unknown"
+yearly_averages[is.na(yearly_averages$Year), "Year"] = "unknown"
+
+# Convert Year back to a factor for animation purposes
+yearly_averages$Year = as.factor(yearly_averages$Year)
+
+# Merge yearly averages with map data
+map_data_yearly = left_join(county_map, yearly_averages, by = c("region" = "State", "subregion" = "County"))
+
+# Create an animated map for Ozone levels over time
+animated_map = ggplot(map_data_yearly, aes(x = long, y = lat, group = group, fill = Ozone)) +
+  geom_polygon(color = "black") +
+  coord_fixed(1.3) +
+  scale_fill_viridis_c(option = "plasma", na.value = "white") +  
+  theme_minimal() +
+  labs(title = "Average Ozone Levels in U.S. Counties ({closest_state})", fill = "Ozone Levels") +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank()
+  ) +
+  transition_states(Year, state_length = 1, transition_length = 1) +
+  ease_aes('linear')
+
+# Animate the plot
+animate(animated_map)
+```
+
+## Function to Analyze Pollution Data
+```{r}
+analyze_pollution = function(data, year = NULL, pollutant = NULL) {
+  # If a year is provided, filter the data by that year
+  if (!is.null(year)) {
+    data = data[data$Year == year, ]
+  }
+  
+  # If a specific pollutant is provided, select only that column
+  if (!is.null(pollutant)) {
+    if (!(pollutant %in% colnames(data))) {
+      stop("Invalid pollutant name provided.")
+    }
+    data = data %>% select(Year, State, County, all_of(pollutant))
+  }
+
+  # Calculate the mean, median, and standard deviation for each pollutant
+  analysis = data %>%
+    summarise(
+      Ozone_Mean = mean(Ozone, na.rm = TRUE),
+      Ozone_Median = median(Ozone, na.rm = TRUE),
+      Ozone_SD = sd(Ozone, na.rm = TRUE),
+      SO2_Mean = mean(SO2, na.rm = TRUE),
+      SO2_Median = median(SO2, na.rm = TRUE),
+      SO2_SD = sd(SO2, na.rm = TRUE),
+      CO_Mean = mean(CO, na.rm = TRUE),
+      CO_Median = median(CO, na.rm = TRUE),
+      CO_SD = sd(CO, na.rm = TRUE),
+      NO2_Mean = mean(NO2, na.rm = TRUE),
+      NO2_Median = median(NO2, na.rm = TRUE),
+      NO2_SD = sd(NO2, na.rm = TRUE)
+    )
+  
+  return(analysis)
+}
+
+# Ex: analyze data for 2020
+analyze_pollution(combined_data_cleaned, year = "2020")
+```
+
+# Question 6: Wine Analysis
+## Load and Inspect Wine Dataset
+```{r}
+wine_data = read.table("wine.txt", sep = ",", header = TRUE)
+colnames(wine_data) = c(paste0("Feature_", 1:11), "Class_1", "Class_2", "Class_3")
+head(wine_data)
+
+# Inspect Data Structure
+str(wine_data)
+```
+
+## Split Data into Training and Test Sets
+```{r}
+set.seed(123)
+sample_index = sample(seq_len(nrow(wine_data)), size = 0.8 * nrow(wine_data))
+train_data = wine_data[sample_index, ]
+test_data = wine_data[-sample_index, ]
+```
+
+## Standardize Variables
+```{r}
+train_data_scaled = scale(train_data)
+test_data_scaled = scale(test_data)
+```
+
+## Perform PCA on Training Set
+```{r}
+pca_train = prcomp(train_data_scaled[, -1], center = TRUE, scale. = TRUE)
+
+# Determine Number of Components to Explain at Least 90% Variance
+explained_variance = summary(pca_train)$importance[3, ]
+num_components = which(cumsum(explained_variance) >= 0.9)[1]
+cat("Number of components explaining at least 90% variance:", num_components, "\n")
+
+# Create Scree Plot
+fviz_screeplot(pca_train, ncp = ncol(train_data_scaled) - 1) +
+  ggtitle("Scree Plot for PCA") +
+  theme_minimal()
+```
+
+## K-means Clustering on Original Variables
+```{r}
+set.seed(123)
+kmeans_original = kmeans(train_data_scaled[, -1], centers = 3, nstart = 25)
+
+# Assign Clusters to Training Data
+train_data_scaled$cluster = kmeans_original$cluster
+
+# Predict Clusters for the Test Set Manually
+get_nearest_cluster = function(point, centroids) {
+  distances = apply(centroids, 1, function(centroid) sum((point - centroid) ^ 2))
+  return(which.min(distances))
+}
+
+test_data_scaled$cluster = apply(test_data_scaled[, -1], 1, get_nearest_cluster, centroids = kmeans_original$centers)
+```
+
+## K-means Clustering on PCA-transformed Data
+```{r}
+kmeans_pca = kmeans(as.data.frame(pca_train$x[, 1:num_components]), centers = 3, nstart = 25)
+
+# Assign Clusters to PCA-transformed Training Data
+train_pca_data = as.data.frame(pca_train$x[, 1:num_components])
+train_pca_data$cluster = kmeans_pca$cluster
+```
+
+## Create Scatter Plot for First Two Principal Components
+```{r}
+fviz_cluster(list(data = train_pca_data, cluster = kmeans_pca$cluster), geom = "point", stand = FALSE) +
+  ggtitle("Clusters on PCA-transformed Data (First Two Components)") +
+  theme_minimal()
+```
