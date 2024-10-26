@@ -1,0 +1,164 @@
+---
+title: "Lab assignment 13 | The penguins data frame "
+author: "Noah Gallego"
+date: "2023-10-25"
+output: word_document
+---
+
+# Read the data
+
+```{r, echo=FALSE}
+library(palmerpenguins)
+library(ggthemes)
+library(ggplot2)
+require(mosaic)
+penguins = penguins
+```
+
+# Remove all rows with NA for sex
+
+```{r, echo=TRUE}
+penguins = penguins[!is.na(penguins$sex), ]
+head(penguins)
+```
+
+# Count missing values NA in each column
+
+```{r, echo=TRUE}
+penguins %>% summarise_all(~ sum(is.na(n)))
+```
+
+# Draw a Scatterplot displaying the relationship between flipper lengths and body masses of these penguins, taking into consideration the species of the penguin.
+
+```{r, echo=TRUE}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g, color = species)) + 
+  geom_point() +
+  labs(title = "Penguin Flipper Dimensions by Species", x = "Flipper Length (mm)", y = "Body Mass (g)") +
+  theme_minimal()
+```
+
+# Develop a classification rule to classify each penguin to its species
+
+1.  Remove variables island, sex and year and call it peng.clust
+
+```{r, echo=TRUE}
+peng.clust = penguins %>%
+  select(-island, -sex, -year)
+
+head(peng.clust)
+```
+
+2.  Perform k means clustering using 3 clusters, PCA and display species vs clusters at the end
+
+training_data = randomly select 300 rows as training data test_data = rest would be testing data
+
+```{r, echo=TRUE}
+# Perform K-Means Clustering
+## Scale the Data
+peng.clust = peng.clust %>%
+  select(where(is.numeric))
+
+## Divide Train/Test Data
+train_indices = sample(nrow(peng.clust), 300, replace = FALSE)
+training_data = peng.clust[train_indices, ]
+test_data = peng.clust[-train_indices, ]
+
+## Perform K=Means Clustering
+kmeans_out = kmeans(training_data, centers = 3)
+
+## Add Findings to DataFrame
+training_data$cluster = as.factor(kmeans_out$cluster)
+
+# Perform Principle Component Analysis (PCA)
+pca_out = prcomp(training_data[, -ncol(training_data)], center = TRUE, scale. = TRUE)
+training_data$PC1 = pca_out$x[, 1]
+training_data$PC2 = pca_out$x[, 2]
+
+# Plot Species vs Clusters using the PCA components
+ggplot(training_data, aes(x = PC1, y = PC2, color = cluster)) +
+  geom_point(alpha = 0.6) +
+  labs(title = "K-Means Clustering of Penguins - PCA Components",
+       x = "Principal Component 1", y = "Principal Component 2") +
+  theme_minimal()
+```
+
+# Compare above diagram with the first scatterplot you generated, do you see any similarities?
+
+-   Gentoo & Chinstrap, appear to be very similar and are harder to separate. Perhaps, the clusters could be improved from Feature Engineering.
+
+# Make a table of cluster vs species for the test data
+
+```{r, echo=TRUE}
+find_nearest_cluster <- function(data, centers) {
+  apply(data, 1, function(row) {
+    distances <- apply(centers, 1, function(center) sum((row - center)^2))
+    return(which.min(distances))
+  })
+}
+
+# Predict clusters for the test data
+test_clusters = find_nearest_cluster(test_data, kmeans_out$centers)
+
+# Create a table of cluster vs. species
+test_species = penguins$species[-train_indices]
+table(Cluster = test_clusters, Species = test_species)
+```
+
+# Summarize results in the test data using a table
+
+```{r, echo=TRUE}
+test_results = data.frame(
+  Species = penguins$species[-train_indices],
+  Cluster = as.factor(test_clusters)
+)
+
+summary_table = table(test_results$Cluster, test_results$Species)
+print(summary_table)
+```
+
+# Take the penguins datset after remove NA rows for sex and perform a PCA
+
+## How many PCA's should we conside according to the screeplot
+
+```{r, echo=TRUE}
+# Perform PCA on the numeric columns of penguins after removing NAs for sex
+peng.pca = prcomp(peng.clust, center = TRUE, scale. = TRUE)
+
+# Scree plot to visualize explained variance
+explained_variance = peng.pca$sdev^2 / sum(peng.pca$sdev^2)
+plot(explained_variance, type = "b", 
+     xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained",
+     main = "Scree Plot for PCA")
+
+```
+
+# Draw a stacked bar plots to visualize the relationship between two categorical variablesisland and species
+
+```{r, echo=TRUE}
+ggplot(penguins, aes(x = island, fill = species)) +
+  geom_bar(position = "stack") +
+  labs(title = "Distribution of Penguin Species by Island",
+       x = "Island",
+       y = "Count",
+       fill = "Species") +
+  theme_minimal()
+```
+
+# Draw a frequncy table between two categorical variablesisland and species
+
+```{r, echo=TRUE}
+freq_table = table(penguins$island, penguins$species)
+print(freq_table)
+```
+
+# Following diagram shows the distribution of different species in the three islands, modify the code shows the distribution of different species and islands among males and females
+
+```{r, echo=TRUE}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species, shape = species)) +
+  facet_grid(sex ~ island) +
+  labs(title = "Distribution of Species by Island and Sex",
+       x = "Flipper Length (mm)", y = "Body Mass (g)") +
+  theme_minimal()
+```
