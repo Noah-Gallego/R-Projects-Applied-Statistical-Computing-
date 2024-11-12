@@ -1,0 +1,298 @@
+---
+title: 'Survey Analysis: Math 3210 Project 1'
+author: "Noah G. Gallego"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    fig_caption: true
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    highlight: tango
+    keep_tex: true
+    latex_engine: xelatex
+  word_document:
+    toc: true
+    toc_depth: '2'
+---
+
+# Introduction
+In this project, we will analyze survey data collected from classmates to gain insights into their financial habits and situations, including budgeting methods, spending patterns, saving behaviors, and concerns about debt. We’ll conduct data cleaning and exploratory data analysis (EDA) to identify trends and patterns within financial practices. Using descriptive statistics, visualizations, and inferential analysis, we aim to highlight relationships between financial behaviors and various factors that may influence financial decision-making. This analysis will provide a deeper understanding of the financial habits and challenges among our peers.
+
+## Load Libraries:
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tm)
+library(wordcloud)
+library(RColorBrewer)
+library(reshape2)
+library(cluster)
+library(ggcorrplot)
+library(tidyr)
+library(tidyverse)
+library(stats)
+library(caret)
+```
+
+## Load Data & Basic Cleaning
+```{r}
+# Load the DataFrame
+df = read.csv("ProData.csv", header = TRUE)
+
+# Remove Unnecessary Rows
+df = df[-c(1, 2), ]
+
+# Select Needed Cols
+cols = c("RecordedDate", "LocationLatitude", "LocationLongitude", "Question.One.", "Question.Two._1", "Question.3.", "Question.4_1", "Question.5", "Question.6", "Question.7", "Question.8", "Question.9", "Question.10", "Question.11")
+df = df[, cols]
+df = df %>%
+  rename(
+    Date_Recorded = RecordedDate,
+    Latitude = LocationLatitude,
+    Longitude = LocationLongitude,
+    Budget_Management_Method = Question.One.,
+    Financial_Confidence = Question.Two._1,
+    Student_Loans = Question.3.,
+    Student_Debt_Concern = Question.4_1,
+    Future_Financial_Decision_Impact = Question.5,
+    Biggest_Expense = Question.6,
+    Employment_Status = Question.7,
+    Saving_For_Future_Expenses = Question.8,
+    Saving_For_Retirement = Question.9,
+    Financial_Independence_Confidence = Question.10,
+    Job_Confidence_Post_Graduation = Question.11
+  )
+
+# Display First Few Rows
+df
+```
+
+## Further Cleaning
+```{r}
+# Convert Cols to Ints where Needed
+df = df %>%
+  mutate(across(c(Latitude, Longitude, Financial_Confidence, Student_Debt_Concern), as.numeric))
+
+# Convert Response to DT
+df$Date_Recorded = as.Date(df$Date_Recorded)
+
+# Convert Binary Responses to 1/0 For Analysis
+df = df %>%
+  mutate(
+    Student_Loans = ifelse(trimws(tolower(Student_Loans)) == "yes", 1, 0),
+    Financial_Independence_Confidence = ifelse(trimws(tolower(Financial_Independence_Confidence)) == "confident", 1, 0),
+    Job_Confidence_Post_Graduation = ifelse(trimws(tolower(Job_Confidence_Post_Graduation)) == "confident", 1, 0),
+    Saving_For_Future_Expenses = ifelse(trimws(tolower(Saving_For_Future_Expenses)) == "yes", 1, 0),
+    Saving_For_Retirement = ifelse(trimws(tolower(Saving_For_Retirement)) == "yes", 1, 0)
+  )
+
+# Function to calculate the mode
+get_mode = function(x) {
+  unique_x = na.omit(x)  # Remove NA values
+  unique_x[which.max(tabulate(match(x, unique_x)))]
+}
+
+# Replace NAs with mode for each column
+df = df %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), get_mode(.), .)))
+
+# Re-Display Dataframe
+head(df)
+```
+
+## Exploratory Data Analysis (EDA)
+
+### Descriptive Statistics
+```{r}
+# Summary Statistics
+summary(df)
+
+# Mean, Median, Mode, Standard Deviation for Numerical Columns
+mean_values = sapply(df %>% select_if(is.numeric), mean, na.rm = TRUE)
+median_values = sapply(df %>% select_if(is.numeric), median, na.rm = TRUE)
+mode_values = sapply(df %>% select_if(is.numeric), get_mode)
+std_dev_values = sapply(df %>% select_if(is.numeric), sd, na.rm = TRUE)
+
+list(mean = mean_values, median = median_values, mode = mode_values, sd = std_dev_values)
+```
+
+### Missing Values Analysis
+```{r}
+# Check for Missing Values
+missing_values = colSums(is.na(df))
+print(missing_values)
+```
+
+### Visualizations
+
+#### Financial Confidence Distribution
+```{r}
+ggplot(df, aes(x = Financial_Confidence)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Financial Confidence Distribution (1 = Low, 5 = High)", x = "Financial Confidence", y = "Frequency")
+```
+
+#### Employment Status Distribution
+```{r}
+# Bar Plot for Employment Status
+ggplot(df, aes(x = as.factor(Employment_Status))) +
+  geom_bar(fill = "orange", color = "black") +
+  labs(title = "Employment Status Distribution", x = "Employment Status (0 = Unemployed, 1 = Employed)", y = "Count")
+```
+
+#### Financial Confidence vs. Student Debt Concern
+```{r}
+# Scatter Plot of Financial Confidence vs. Student Debt Concern
+ggplot(df, aes(x = Financial_Confidence, y = Student_Debt_Concern)) +
+  geom_point(color = "darkgreen") +
+  labs(title = "Scatter Plot of Financial Confidence vs Student Debt Concern",
+       x = "Financial Confidence", y = "Student Debt Concern")
+```
+
+### Additional Visualizations
+
+#### Budget Management Method Distribution
+```{r}
+# Bar Plot for Budget Management Methods
+ggplot(df, aes(x = Budget_Management_Method)) +
+  geom_bar(fill = "purple", color = "black") +
+  labs(title = "Budget Management Method Distribution", x = "Budget Management Method", y = "Count")
+```
+
+#### Saving for Future Expenses vs. Employment Status
+```{r}
+# Bar Plot for Saving for Future Expenses vs. Employment Status
+ggplot(df, aes(x = as.factor(Employment_Status), fill = as.factor(Saving_For_Future_Expenses))) +
+  geom_bar(position = "dodge", color = "black") +
+  labs(title = "Saving for Future Expenses by Employment Status", x = "Employment Status (0 = Unemployed, 1 = Employed)", y = "Count", fill = "Saving for Future Expenses (0 = No, 1 = Yes)")
+```
+
+#### Financial Independence Confidence by Employment Status
+```{r}
+# Bar Plot for Financial Independence Confidence by Employment Status
+ggplot(df, aes(x = as.factor(Employment_Status), fill = as.factor(Financial_Independence_Confidence))) +
+  geom_bar(position = "dodge", color = "black") +
+  labs(title = "Financial Independence Confidence by Employment Status", x = "Employment Status (0 = Unemployed, 1 = Employed)", y = "Count", fill = "Financial Independence Confidence (0 = Not Confident, 1 = Confident)")
+```
+
+### Word Cloud Analysis
+
+#### Word Cloud for Future Financial Decision Impact
+```{r}
+# Create a Word Cloud for Future Financial Decision Impact
+text_data = Corpus(VectorSource(df$Future_Financial_Decision_Impact))
+text_data = text_data %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removeWords, stopwords("english"))
+
+wordcloud(text_data, max.words = 100, random.order = FALSE, colors = brewer.pal(8, "Dark2"))
+```
+
+## Inferential Analysis
+
+### Regression Analysis
+
+#### Predicting Financial Confidence
+```{r}
+# Linear Regression to Predict Financial Confidence
+lm_model = lm(Financial_Confidence ~ Employment_Status + Student_Loans + Saving_For_Future_Expenses + Saving_For_Retirement, data = df)
+summary(lm_model)
+```
+
+### Cross-Tabulations
+
+#### Cross-Tabulation: Budgeting Method by Employment Status
+```{r}
+# Cross-tabulation of Budgeting Method by Employment Status
+budget_vs_employment = table(df$Budget_Management_Method, df$Employment_Status)
+print(budget_vs_employment)
+```
+
+#### Cross-Tabulation: Financial Confidence by Saving Habits
+```{r}
+# Cross-tabulation of Financial Confidence by Saving for Future Expenses
+confidence_vs_saving = table(df$Financial_Confidence, df$Saving_For_Future_Expenses)
+print(confidence_vs_saving)
+```
+
+### Clustering Analysis
+
+#### K-Means Clustering of Financial Behaviors
+```{r}
+# K-Means Clustering
+df_numeric = df %>% select_if(is.numeric)
+kmeans_result = kmeans(df_numeric, centers = 3)
+df$Cluster = as.factor(kmeans_result$cluster)
+
+# Plot Clustering Results with Circles
+ggplot(df, aes(x = Financial_Confidence, y = Student_Debt_Concern, color = Cluster)) +
+  geom_point() +
+  stat_ellipse(aes(group = Cluster), type = "norm", linetype = 2) +
+  labs(title = "K-Means Clustering of Financial Behaviors", x = "Financial Confidence", y = "Student Debt Concern", color = "Cluster")
+```
+
+### Percentage Analysis of Survey Responses
+```{r}
+# Percentage of Responses for Key Questions
+
+# Percentage of Students with Student Loans
+total_responses = nrow(df)
+students_with_loans = sum(df$Student_Loans == 1)
+percentage_loans = (students_with_loans / total_responses) * 100
+cat("Percentage of students with student loans:", percentage_loans, "%\n")
+
+# Percentage of Students Saving for Future Expenses
+saving_for_expenses = sum(df$Saving_For_Future_Expenses == 1)
+percentage_saving_expenses = (saving_for_expenses / total_responses) * 100
+cat("Percentage of students saving for future expenses:", percentage_saving_expenses, "%\n")
+
+# Percentage of Students Saving for Retirement
+saving_for_retirement = sum(df$Saving_For_Retirement == 1)
+percentage_saving_retirement = (saving_for_retirement / total_responses) * 100
+cat("Percentage of students saving for retirement:", percentage_saving_retirement, "%\n")
+
+# Percentage of Employed Students
+employed_students = sum(df$Employment_Status == 1)
+percentage_employed = (employed_students / total_responses) * 100
+cat("Percentage of students employed while attending school:", percentage_employed, "%\n")
+
+# Percentage of Students Confident in Financial Independence
+confident_financial_independence = sum(df$Financial_Independence_Confidence == 1)
+percentage_confident_independence = (confident_financial_independence / total_responses) * 100
+cat("Percentage of students confident in achieving financial independence:", percentage_confident_independence, "%\n")
+
+# Percentage of Students Confident in Job Post Graduation
+confident_job_post_graduation = sum(df$Job_Confidence_Post_Graduation == 1)
+percentage_confident_job = (confident_job_post_graduation / total_responses) * 100
+cat("Percentage of students confident in finding a job post-graduation:", percentage_confident_job, "%\n")
+```
+
+### Additional EDA
+
+#### Heatmap of Correlations
+```{r}
+# Heatmap of Correlations to visualize relationships between variables
+ggcorrplot(correlation_matrix, lab = TRUE, title = "Correlation Heatmap", 
+           lab_size = 3,         
+           tl.cex = 8,        
+           tl.srt = 45,
+           hc.order = TRUE)
+```
+
+#### Boxplots for Spending Habits
+```{r}
+# Boxplot for Biggest Expense Categories
+ggplot(df, aes(x = Biggest_Expense, y = Financial_Confidence)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  labs(title = "Boxplot of Financial Confidence by Biggest Expense", x = "Biggest Expense", y = "Financial Confidence")
+```
+
+### Geographic Analysis Using Mapview
+#```{r}
+#library(mapview)
+# Plot the locations using mapview
+#mapview(df, xcol = "Longitude", ycol = "Latitude", crs = 4269, grid = FALSE)
+#```
