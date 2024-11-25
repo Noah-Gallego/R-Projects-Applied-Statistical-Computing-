@@ -6,9 +6,9 @@ library(tmap)
 library(rsconnect)
 
 # Define account information for deployment
-rsconnect::setAccountInfo(name = 'noahgallego',
-                          token = '9A4D6A91E4E7614797364E7B6C3DCF07',
-                          secret = 'EG9Btzu02TXFSSIUicDJq6pVpImhJ+movEKpTzQE')
+rsconnect::setAccountInfo(name = 'USERNAME',
+                          token = 'TOKEN',
+                          secret = 'SECRET')
 
 # Define UI for application that maps geographic data
 ui <- fluidPage(
