@@ -2,6 +2,10 @@
 
 Coursework in applied statistical computing and multivariate methods, including R analyses, reports, data files, and Shiny applications.
 
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=r,html&theme=light" alt="R and HTML" />
+</p>
+
 ## Overview
 
 The repository is organized by course week and assessment:
@@ -14,9 +18,12 @@ The repository is organized by course week and assessment:
 
 Topics represented by the files include exploratory data analysis, data manipulation, visualization, principal component analysis, hypothesis testing, and predictive analysis.
 
+## Preview
+
+![Applied statistical computing browser capture](https://noah-readme-assets-v3.vercel.app/R-Projects-Applied-Statistical-Computing-/browser.png)
+
 ## Tech stack
 
-- R
 - R Markdown
 - Shiny
 - SAS is referenced in the course materials
