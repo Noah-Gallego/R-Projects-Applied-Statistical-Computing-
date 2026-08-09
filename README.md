@@ -21,6 +21,19 @@ Topics represented by the files include exploratory data analysis, data manipula
 - Shiny
 - SAS is referenced in the course materials
 
+### Important libraries
+
+- tidyverse, including `dplyr` and `tidyr`
+- `ggplot2` and `plotly`
+- `caret` and `randomForest`
+- `quantmod` and `prophet`
+- `leaflet`, `sf`, and `tmap`
+- `shinydashboard`
+
+## Hosted application
+
+- [Final Project Shiny app](https://noahgallego.shinyapps.io/final_project/)
+
 ## Usage
 
 Open the `.R`, `.Rmd`, and Shiny application files in an R environment. The repository contains source files and accompanying data, but no root installation manifest or automated test command.
