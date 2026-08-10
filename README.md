@@ -22,21 +22,6 @@ Topics represented by the files include exploratory data analysis, data manipula
 
 ![Applied statistical computing browser capture](https://noah-readme-assets-v3.vercel.app/R-Projects-Applied-Statistical-Computing-/browser.png)
 
-## Tech stack
-
-- R Markdown
-- Shiny
-- SAS is referenced in the course materials
-
-### Important libraries
-
-- tidyverse, including `dplyr` and `tidyr`
-- `ggplot2` and `plotly`
-- `caret` and `randomForest`
-- `quantmod` and `prophet`
-- `leaflet`, `sf`, and `tmap`
-- `shinydashboard`
-
 ## Hosted application
 
 - [Final Project Shiny app](https://noahgallego.shinyapps.io/final_project/)
