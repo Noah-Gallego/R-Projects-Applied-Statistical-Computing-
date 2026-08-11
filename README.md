@@ -2,6 +2,10 @@
 
 Coursework in applied statistical computing and multivariate methods, including R analyses, reports, data files, and Shiny applications.
 
+> [!NOTE]
+> Treat each week and assessment as a separate analysis unit; the repository has no root installation manifest or single automated test command.
+
+
 <p align="center">
   <img src="https://skillicons.dev/icons?i=r,html&theme=light" alt="R and HTML" />
 </p>
@@ -33,3 +37,13 @@ Open the `.R`, `.Rmd`, and Shiny application files in an R environment. The repo
 ## Academic context
 
 These files are course materials and student work. Dataset and upstream report attribution should be preserved when reusing individual analyses.
+
+## Structure
+
+```mermaid
+flowchart LR
+    A[Weekly exercises and assessments] --> B[R and R Markdown analyses]
+    B --> C[Reports, PDFs, and data files]
+    B --> D[Shiny applications]
+    C --> E[Coursework archive]
+```
